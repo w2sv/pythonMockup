@@ -1,0 +1,15 @@
+[
+  {
+    "name" : "MacBook Air M1",
+    "mockupImage": "src/macbook.png",
+    "screen" : {
+      "width": 2560,
+      "height": 1600
+    },
+    "position": {
+      "left" : 300,
+      "top" : 300,
+      "width" : 2000
+    }
+  }
+]

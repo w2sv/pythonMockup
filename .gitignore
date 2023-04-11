@@ -1,4 +1,9 @@
 /.idea/
+
 PythonMockups.iml
+geckodriver.log
 
 *.DS_Store
+*__pycache__
+
+/temp/*
