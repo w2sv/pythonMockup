@@ -1,34 +1,41 @@
 from PIL import Image
+import os
 
 class TransparentImageOverlay:
-
-    def __init__(self, background_img_path, overlay_img_path, x, y, width):
-        self.background_img_path = background_img_path
-        self.overlay_img_path = overlay_img_path
+    def __init__(self, bottom_image_path, top_image_path, x, y, width):
+        self.bottom_image_path = bottom_image_path
+        self.top_image_path = top_image_path
         self.x = x
         self.y = y
         self.width = width
 
-    def overlay_images(self, output_path):
-        # Load the background and overlay images
-        background_img = Image.open(self.background_img_path).convert("RGBA")
-        overlay_img = Image.open(self.overlay_img_path).convert("RGBA")
+    def overlay_images(self, output_path, keepScreenshot=False):
+        # Öffne die beiden Bilder und konvertiere sie in RGBA-Modus, um Transparenz zu unterstützen
+        with Image.open(self.bottom_image_path) as b_image, Image.open(self.top_image_path) as t_image:
+            bottom_image = b_image.convert('RGBA')
+            top_image = t_image.convert('RGBA')
 
-        # Calculate the height of the overlay image based on its aspect ratio
-        aspect_ratio = overlay_img.width / overlay_img.height
-        height = round(self.width / aspect_ratio)
+            # Berechne die Höhe des oberen Bildes basierend auf dem Seitenverhältnis und der Breite
+            width_percent = (self.width / float(top_image.size[0]))
+            height = int((float(top_image.size[1]) * float(width_percent)))
 
-        # Resize the overlay image to the desired width and height
-        resized_overlay_img = overlay_img.resize((self.width, height))
+            # Skaliere das obere Bild auf die gewünschte Größe
+            top_image = top_image.resize((self.width, height))
 
-        # Create a new transparent image with the same dimensions as the background image
-        new_img = Image.new("RGBA", background_img.size, (0, 0, 0, 0))
+            # Erstellen eines transparenten Hintergrundbildes, das der Größe des unteren Bildes entspricht
+            background = Image.new('RGBA', bottom_image.size, (255, 255, 255, 0))
 
-        # Paste the background image onto the new image
-        new_img.paste(background_img, (0, 0))
+            # Einfügen des unteren Bildes in den Hintergrund
+            background.paste(bottom_image, (0, 0))
 
-        # Paste the resized overlay image onto the new image at the specified X/Y coordinates
-        new_img.paste(resized_overlay_img, (self.x, self.y), mask=resized_overlay_img)
+            # Einfügen des oberen Bildes an der gewünschten Position auf dem Hintergrund
+            background.paste(top_image, (self.x, self.y), mask=top_image)
 
-        # Save the new image as a PNG file
-        new_img.save(output_path, format="PNG")
+            # Speichern des neuen Bildes
+            background.save(output_path)
+
+            if keepScreenshot is not True:
+                self.removeScreenshotTemp()
+
+    def removeScreenshotTemp(self):
+        os.remove(self.top_image_path)

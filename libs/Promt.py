@@ -1,6 +1,5 @@
 import json
 import sys
-from libs.selenium import WebsiteScreenshot
 
 
 class PromtManager:
@@ -16,9 +15,6 @@ class PromtManager:
         self.url = self.getURL()
         self.hideClass = self.getHideClass()
 
-        # Take Screenshot
-        screenshotSize = self.mockupDevice["screen"]
-        screenshot = WebsiteScreenshot(self.url, screenshotSize["width"], screenshotSize["height"], self.hideClass)
 
     def getURL(self):
         url = input("Please enter the url to the Webpage you want to create a mockup for:\n")

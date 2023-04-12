@@ -1,15 +1,15 @@
 [
   {
     "name" : "MacBook Air M1",
-    "mockupImage": "src/macbook.png",
+    "mockupImage": "src/macbook_white.png",
     "screen" : {
       "width": 2560,
       "height": 1600
     },
     "position": {
-      "left" : 300,
-      "top" : 300,
-      "width" : 2000
+      "left" : 982,
+      "top" : 367,
+      "width" : 1880
     }
   }
 ]
