@@ -4,7 +4,7 @@
 
 Still under heavy development. Feel free to use or contribute!
 
-![CLI-Preview](https://github.com/sotenck/pythonMockup/raw/main/src/DemoCLI.png)
+![CLI-Preview](https://github.com/sotenck/pythonMockup/raw/main/src/DemoCLI.jpg)
 To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
 
     python3 PythonMockup.py
