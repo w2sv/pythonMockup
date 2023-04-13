@@ -29,6 +29,6 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 - improve **Screenshot placement**
     - auto discover screen-position on Mockup-Devices
     - 4-Point perspective screenshot mapping
-    - add Screen glow and reflections
+    - add Screen reflection/dirt effekt
 - add optional color and gradient **background**
 - User-Interface?
