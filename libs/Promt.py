@@ -7,7 +7,7 @@ class PromtManager:
     def __init__(self):
 
         # Load only Device Mockup
-        with open('libs/mockups.json', 'r') as f:
+        with open('mockups.json', 'r') as f:
             deviceInfo = json.load(f)
             self.mockupDevice = deviceInfo[0]
             print(f"Generating mockup for {self.mockupDevice['name']}")

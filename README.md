@@ -4,6 +4,14 @@
 
 Still under heavy development. Feel free to use or contribute!
 
+**Features**
+--
+- Open any website from url
+- Takes screenshot in desired aspect-ratio
+- Exclude HTML-DOM elements from screenshot by class-name
+- Adapts max screenshot-resolution depending on user screen resolution
+- Possible to include own Mockups in 'src/'-Folder and add them in 'mockups.json'
+
 ![CLI-Preview](https://github.com/sotenck/pythonMockup/raw/main/src/DemoCLI.jpg)
 To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
 

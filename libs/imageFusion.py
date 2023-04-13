@@ -16,7 +16,7 @@ class TransparentImageOverlay:
             screenshot = self.transformScreenshot(t_image).convert('RGBA')
 
             # Place white blur rectangle
-            backgroundComp = self.add_blur(background, screenshot, 100, 0.3)
+            backgroundComp = self.add_blur(background, screenshot, 150, 0.75)
 
             # Einfügen des oberen Bildes an der gewünschten Position auf dem Hintergrund mit BlurBox
             backgroundComp.paste(screenshot, (self.x, self.y), mask=screenshot)
