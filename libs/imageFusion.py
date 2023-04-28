@@ -59,7 +59,7 @@ class TransparentImageOverlay:
         return alpha_mask, overlay_layer
 
 
-    def create_border_glow(self, screen, bg_shape, glow_radius= 500, glow_intensity=15):
+    def create_border_glow(self, screen, bg_shape, glow_radius= 300, glow_intensity=2):
         h, w = bg_shape[:2]
 
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
