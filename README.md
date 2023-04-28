@@ -17,7 +17,7 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 
     python3 PythonMockup.py
 
-**Demo export mockup** (without website screenshot overlay)
+**Demo export mockup** (with https://codespace.berlin screenshot overlay)
 ![macbook demo mockup](https://github.com/sotenck/pythonMockup/raw/main/src/thumpnails/Demo-Mockup-Macbook.png)
 
 **Requirements**
