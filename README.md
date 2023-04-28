@@ -1,4 +1,4 @@
-# PythonMockup v0.01
+# PythonMockup v0.02
 
 ### Python lib for generating device mockups from live web urls
 
