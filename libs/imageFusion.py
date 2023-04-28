@@ -1,57 +1,92 @@
 from PIL import Image, ImageDraw, ImageFilter
+import cv2
+import numpy as np
 import os
 
 class TransparentImageOverlay:
-    def __init__(self, bottom_image_path, top_image_path, x, y, width):
+    def __init__(self, bottom_image_path, top_image_path, points):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
-        self.x = x
-        self.y = y
-        self.width = width
+        self.transformPoints = np.array(points, dtype=np.float32)
 
     def overlay_images(self, output_path, keepScreenshot=False):
-        # Öffne die beiden Bilder und konvertiere sie in RGBA-Modus, um Transparenz zu unterstützen
-        with Image.open(self.bottom_image_path) as b_image, Image.open(self.top_image_path) as t_image:
-            background = b_image.convert('RGBA')
-            screenshot = self.transformScreenshot(t_image).convert('RGBA')
+        # Öffne die beiden Bilder und konvertiere sie in BGRA-Modus, um Transparenz zu unterstützen
+        background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
+        screenshot = cv2.imread(self.top_image_path, cv2.IMREAD_UNCHANGED)
 
-            # Place white blur rectangle
-            backgroundComp = self.add_blur(background, screenshot, 150, 0.75)
+        # Füge das Leuchten (verwischter Hintergrund) hinter dem Screenshot hinzu
+        screen_glow = self.add_blur(background, screenshot, 100)
 
-            # Einfügen des oberen Bildes an der gewünschten Position auf dem Hintergrund mit BlurBox
-            backgroundComp.paste(screenshot, (self.x, self.y), mask=screenshot)
+        glowBackground = self.overlay(screen_glow, background);
 
-            # Speichern des neuen Bildes
-            backgroundComp.save(output_path)
+        # Füge die 4-Punkt-Transformation hinzu
+        final_image = self.add_four_point_transform(glowBackground, screenshot)
 
-            if keepScreenshot is not True:
-                self.removeScreenshotTemp()
+        # Save the new image in BGRA format
+        cv2.imwrite(output_path, final_image)
 
-    def transformScreenshot(self, image):
-        # Berechne die Höhe des oberen Bildes basierend auf dem Seitenverhältnis und der Breite
-        width_percent = (self.width / float(image.size[0]))
-        height = int((float(image.size[1]) * float(width_percent)))
+        if keepScreenshot is not True:
+            self.removeScreenshotTemp()
 
-        # Skaliere das obere Bild auf die gewünschte Größe
-        newScreenSize = image.resize((self.width, height))
-        return newScreenSize
+    def add_blur(self, background, screenshot, blur_radius=30):
+        h, w = background.shape[:2]
 
-    def add_blur(self,background,screenshot,blur_radius=100, opacity=1.0):
+        # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
+        empty_image = np.zeros((h, w, 4), dtype=np.uint8)
 
-        # Create a new image with the same size as the original image
-        rectangle = Image.new("RGBA", background.size, (255, 255, 255, 0))
+        # Setze den Screenshot mit 4-Point-Transform an die richtige Stelle auf das leere Bild
+        empty_image = self.add_four_point_transform(empty_image, screenshot)
 
-        # Draw the white rectangle
-        draw = ImageDraw.Draw(rectangle)
-        draw.rectangle([self.x, self.y, self.x + screenshot.width, self.y + screenshot.height], fill=(255, 255, 255, (int)(opacity * 255)))
+        # Wende einen Blur auf das komplette Bild an
+        blurred_image = cv2.GaussianBlur(empty_image, (0,0), blur_radius)
 
-        # Blur the edges of the rectangle
-        blurBox = rectangle.filter(ImageFilter.GaussianBlur(blur_radius))
+        return cv2.addWeighted(blurred_image, 1.5, np.zeros(blurred_image.shape, blurred_image.dtype), 0, 1)
 
-        # Place the blurred rectangle onto the original image
-        result = Image.alpha_composite(background, blurBox)
+    def add_four_point_transform(self, background, screenshot):
+        # Calculate the 4-point transformation
+        pts_src = np.array(
+            [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],
+            dtype=np.float32)
 
-        return result
+        h, status = cv2.findHomography(pts_src, self.transformPoints)
+        out = cv2.warpPerspective(screenshot, h, (background.shape[1], background.shape[0]))
+
+        # Add the transformed image onto the background image
+        alpha_screenshot = out[:, :, 3] / 255.0
+        alpha_background = background[:, :, 3] / 255.0
+        alpha_combined = alpha_screenshot + (1 - alpha_screenshot) * alpha_background
+        final_alpha = (alpha_combined * 255).astype(np.uint8)
+
+        for c in range(0, 3):
+            background[:, :, c] = np.divide(
+                alpha_screenshot * out[:, :, c] + (1 - alpha_screenshot) * background[:, :, c] * alpha_background,
+                alpha_combined,
+                out=np.zeros_like(alpha_combined),
+                where=(alpha_combined != 0)
+            )
+
+        background[:, :, 3] = final_alpha
+
+        return background
+
+    def overlay(self, image1, image2):
+        # Add the two images together, preserving alpha channel
+        alpha_screenshot = image1[:, :, 3] / 255.0
+        alpha_background = image2[:, :, 3] / 255.0
+        alpha_combined = alpha_screenshot + (1 - alpha_screenshot) * alpha_background
+        final_alpha = (alpha_combined * 255).astype(np.uint8)
+
+        for c in range(0, 3):
+            image2[:, :, c] = np.divide(
+                alpha_screenshot * image1[:, :, c] + (1 - alpha_screenshot) * image2[:, :, c] * alpha_background,
+                alpha_combined,
+                out=np.zeros_like(alpha_combined),
+                where=(alpha_combined != 0)
+            )
+
+        image2[:, :, 3] = final_alpha
+
+        return image2
 
     def removeScreenshotTemp(self):
         os.remove(self.top_image_path)

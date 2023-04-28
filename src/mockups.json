@@ -1,0 +1,29 @@
+[
+  {
+    "name" : "MacBook Air M1",
+    "mockupImage": "src/mockup/macbook-air-m1.png",
+    "screen" : {
+      "width": 2560,
+      "height": 1600
+    },
+    "position": {
+      "p1" : [984,366],
+      "p2" : [2862,365],
+      "p3" : [2858, 1545],
+      "p4" : [988, 1544]
+    }
+  }, {
+    "name" : "Iphone 14 Pro",
+    "mockupImage": "src/mockup/iphone-14-pro.png",
+    "screen" : {
+      "width": 1179,
+      "height": 2556
+    },
+    "position": {
+      "p1" : [220,325],
+      "p2" : [1003,227],
+      "p3" : [926, 1661],
+      "p4" : [290, 1846]
+    }
+  }
+]

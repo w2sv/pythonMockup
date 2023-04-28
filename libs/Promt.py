@@ -4,12 +4,12 @@ import sys
 
 class PromtManager:
 
-    def __init__(self):
+    def __init__(self, device_id = 0):
 
         # Load only Device Mockup
-        with open('mockups.json', 'r') as f:
+        with open('src/mockups.json', 'r') as f:
             deviceInfo = json.load(f)
-            self.mockupDevice = deviceInfo[0]
+            self.mockupDevice = deviceInfo[device_id]
             print(f"Generating mockup for {self.mockupDevice['name']}")
 
         self.url = self.getURL()

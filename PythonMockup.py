@@ -1,9 +1,10 @@
 from libs.Promt import PromtManager
 from libs.selenium import WebsiteScreenshot
 from libs.imageFusion import TransparentImageOverlay
+import time as t
 
 # Initilize information query
-consoleInterface = PromtManager()
+consoleInterface = PromtManager(1)
 
 # Take Screenshot
 mockup = consoleInterface.mockupDevice
@@ -22,8 +23,15 @@ screenPos = mockup.get("position")
 photoBooth = TransparentImageOverlay(
     bottom_image_path=mockup.get("mockupImage"),
     top_image_path=screenshot.tempPath,
-    x=screenPos.get("left"),
-    y=screenPos.get("top"),
-    width=screenPos.get("width")
+    points=[
+        screenPos["p1"],
+        screenPos["p2"],
+        screenPos["p3"],
+        screenPos["p4"]
+    ]
 )
-photoBooth.overlay_images("output/newMockup.png", keepScreenshot=False)
+
+fileName = "".join(x for x in mockup.get("name") if x.isalnum())
+
+imgName = f"output/{fileName}-{t.time()}.png";
+photoBooth.overlay_images(imgName, keepScreenshot=False)

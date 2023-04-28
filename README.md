@@ -12,13 +12,13 @@ Still under heavy development. Feel free to use or contribute!
 - Adapts max screenshot-resolution depending on user screen resolution
 - Possible to include own Mockups in 'src/'-Folder and add them in 'mockups.json'
 
-![CLI-Preview](https://github.com/sotenck/pythonMockup/raw/main/src/DemoCLI.jpg)
+![CLI-Preview](https://github.com/sotenck/pythonMockup/raw/main/src/thumpnails/DemoCLI.jpg)
 To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
 
     python3 PythonMockup.py
 
 **Demo export mockup** (without website screenshot overlay)
-![enter image description here](https://github.com/sotenck/pythonMockup/raw/main/src/macbook_white.png)
+![macbook demo mockup](https://github.com/sotenck/pythonMockup/raw/main/src/thumpnails/Demo-Mockup-Macbook.png)
 
 **Requirements**
 --
@@ -28,15 +28,21 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 **Pip requirements**
 --
 - selenium
-- Pillow (PIL)
+- Open CV2
 - geckodriver-autoinstaller
 
 **Roadmap**
 --
-- Add **multiple device** mockups (different screen sizes)
-- improve **Screenshot placement**
-    - auto discover screen-position on Mockup-Devices
-    - 4-Point perspective screenshot mapping
-    - add Screen reflection/dirt effekt
-- add optional color and gradient **background**
-- User-Interface?
+- [x] 4-Point perspective screenshot mapping
+- [x] add screen glow
+- [ ] add optional color and gradient **background**
+- [ ] add Screen reflection
+- [ ] Add way **more device** mockups
+- [ ] Screenshot masking / rounded corners
+
+
+- [ ] Auto discover screen-position on Mockup-Images (check possibility)
+- [ ] ...or make Screen-Edge-Point selection tool
+
+
+- [ ] User-Interface / Web-Interface
