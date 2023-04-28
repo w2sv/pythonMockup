@@ -35,14 +35,10 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 --
 - [x] 4-Point perspective screenshot mapping
 - [x] add screen glow
+- [x] add Screen reflection
+- [x] Screenshot masking / rounded corners
 - [ ] add optional color and gradient **background**
-- [ ] add Screen reflection
 - [ ] Add way **more device** mockups
-- [ ] Screenshot masking / rounded corners
 
-
-- [ ] Auto discover screen-position on Mockup-Images (check possibility)
-- [ ] ...or make Screen-Edge-Point selection tool
-
-
+- [ ] Make mockup screen-edge-point selection tool / ui
 - [ ] User-Interface / Web-Interface
