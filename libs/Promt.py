@@ -26,7 +26,7 @@ class PromtManager:
         return url
 
     def getHideClass(self):
-        removeClass = input("\nAre there DOM-elements you want to hide? Enter the class name here:\n(Just press enter if you don't want to hide anything)\n")
+        removeClass = input("\nAre there any DOM-elements you want to hide? Enter the class name here:\n(Just press enter if you don't want to hide anything)\n")
 
         if len(removeClass) < 1:
             removeClass = False

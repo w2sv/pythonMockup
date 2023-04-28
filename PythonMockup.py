@@ -18,7 +18,7 @@ screenshot = WebsiteScreenshot(
 )
 
 # Create new Overlay Image
-print("mergin images...")
+print("Starting image processor")
 screenPos = mockup.get("position")
 photoBooth = TransparentImageOverlay(
     bottom_image_path=mockup.get("mockupImage"),
