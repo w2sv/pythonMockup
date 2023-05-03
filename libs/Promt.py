@@ -1,18 +1,23 @@
 import json
-from libs.checkbox import checkbox
+from libs.checkbox import checkBox
+from libs.bColor import bcolors
 
 class PromtManager:
 
-    def __init__(self):
+    def __init__(self, callback=None):
         self.url = self.getURL()
         self.hideClass = self.getHideClass()
         self.devices = self.selectDevices()
 
+        self.callback = callback
+
+        self.initCheckbox()
+
     def getURL(self):
-        url = input("Please enter the url to the Webpage you want to create a mockup for:\n")
+        url = input(f"{bcolors.HEADER}Please enter the url to the Webpage you want to create a mockup for:{bcolors.ENDC}\n")
         while(True):
             if url[:4] != "http":
-                url = input("That is not a valid url. Please try again:\n")
+                url = input(f"{bcolors.FAIL}That is not a valid url. Please try again:{bcolors.ENDC}\n")
             else:
                 break
         return url
@@ -23,7 +28,7 @@ class PromtManager:
         if len(removeClass) < 1:
             removeClass = False
         else:
-            print(f"\n...will hide all elements with [{removeClass}] class name\n")
+            print(f"\n...will hide all elements with {bcolors.BOLD}[{removeClass}]{bcolors.ENDC} class name\n")
 
         return removeClass
 
@@ -32,24 +37,27 @@ class PromtManager:
         # Load only Device Mockup
         with open('src/mockups.json', 'r') as f:
             deviceInfo = json.load(f)
-            deviceOptions = []
-            preSelect = []
-            for n in range(len(deviceInfo)):
-                deviceOptions.append(deviceInfo[n]['name'])
-                preSelect.append(n)
-
-            checkbox(
-                options=deviceOptions,
-                pre_selection=preSelect,
-                callback=self.getSelection
-            )
-
             return deviceInfo
 
+    def initCheckbox(self):
+        deviceOptions = []
+        preSelect = []
+        for n in range(len(self.devices)):
+            deviceOptions.append(self.devices[n]['name'])
+            preSelect.append(n)
+
+        checkBox(
+            options=deviceOptions,
+            pre_selection=preSelect,
+            callback=self.getSelection
+        )
+
     def getSelection(self, selected_indices):
-        print("SELECTED")
+        selDeviceArr = []
         for x in range(len(self.devices)):
             if x in selected_indices:
-                print(self.devices[x]['name'])
+                selDeviceArr.append(self.devices[x])
 
+        if self.callback:
+            self.callback(selDeviceArr, self)
 

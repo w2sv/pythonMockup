@@ -1,7 +1,10 @@
 from pynput import keyboard
 from os import system
 from libs.bColor import bcolors
-class checkbox:
+import threading
+
+
+class checkBox:
 
     NOT_SELECTED = "[ ]"
     IS_SELECTED = "[x]"
@@ -12,11 +15,12 @@ class checkbox:
     def __init__(self, options,
                  title="Select with arrow keys and spacebar",
                  min_select=0,
-                 pre_selection=[],
+                 pre_selection=None,
                  callback=None
     ):
 
         self.callback = callback
+        self.finished_event = threading.Event()
 
         self.title = title
         self.options = options
@@ -25,7 +29,7 @@ class checkbox:
         self.selected = []
         self.pointer = 0
 
-        if len(pre_selection) > 0:
+        if pre_selection:
             for n in range(len(options)):
                 if n in pre_selection:
                     self.selected.append(n)
