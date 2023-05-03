@@ -19,10 +19,10 @@ class TransparentImageOverlay:
 
         # Transform and Mask Screenshot
         transformed_screen = self.add_four_point_transform(screenshot, background.shape, alpha_screen)
-        screen_glow = self.create_border_glow(transformed_screen, background.shape)
+        # screen_glow = self.create_border_glow(transformed_screen, background.shape)
 
-        layer1 = self.overlay(screen_glow, background)
-        layer2 = self.overlay(transformed_screen, layer1)
+        #layer1 = self.overlay(screen_glow, background)
+        layer2 = self.overlay(transformed_screen, background)
         layer3 = self.overlay(screen_glare, layer2)
 
         # Save the new image in BGRA format

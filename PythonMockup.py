@@ -5,6 +5,7 @@ from libs.selenium import WebsiteScreenshot
 from libs.imageFusion import TransparentImageOverlay
 import time as t
 from libs.bColor import bcolors
+import tldextract
 
 
 class PythonMockup:
@@ -16,7 +17,8 @@ class PythonMockup:
     def process(self, selectedDevices, promterInstance):
 
         # create new output folder
-        folderName = self.sanitze(promterInstance.url)
+        webNameInfo = tldextract.extract(promterInstance.url)
+        folderName = self.sanitze(webNameInfo.subdomain + webNameInfo.domain)
         newPath = f"output/{folderName}/"
 
         if not os.path.exists(newPath):
@@ -25,22 +27,21 @@ class PythonMockup:
         # start selenium Engine
         screenshotEngine = WebsiteScreenshot(
             url=promterInstance.url,
+            directory=newPath + "temp/",
             cookieClass=promterInstance.hideClass,
-            waitTime=5
+            waitTime=5,
         )
 
         for x in range(len(selectedDevices)):
             mockup = selectedDevices[x]
 
-            print(f"\n{bcolors.UNDERLINE}Device generating: {mockup.get('name')}{bcolors.ENDC}")
+            print(f"\n{bcolors.UNDERLINE}Device generating:{bcolors.ENDC} {bcolors.OKCYAN}{mockup.get('name')}{bcolors.ENDC}")
 
             screenshotSize = mockup.get("screen")
             newScreenshot = screenshotEngine.take_screenshot(
                 screenshotSize.get("width"),
                 screenshotSize.get("height")
             )
-
-            print(newScreenshot)
 
             # Create new Overlay Image
             print("Starting image processor")
@@ -60,6 +61,13 @@ class PythonMockup:
             imgName = newPath + fileName + ".png"
 
             photoBooth.overlay_images(imgName, keepScreenshot=False)
+
+
+        tempPath = "/".join(newScreenshot.split("/")[:-1]) + "/"
+        os.rmdir(tempPath)
+        print(f"Remove temp folder at {tempPath}")
+
+        screenshotEngine.closeBrowser()
 
     def sanitze(self, string):
         return "".join(x for x in string if x.isalnum())
