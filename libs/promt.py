@@ -14,7 +14,7 @@ class PromtManager:
         self.initCheckbox()
 
     def getURL(self):
-        url = input(f"{bcolors.HEADER}Please enter the url to the Webpage you want to create a mockup for:{bcolors.ENDC}\n")
+        url = input(f"\n{bcolors.HEADER}Please enter the url to the Webpage you want to create a mockup for:{bcolors.ENDC}\n")
         while(True):
             if url[:4] != "http":
                 url = input(f"{bcolors.FAIL}That is not a valid url. Please try again:{bcolors.ENDC}\n")

@@ -7,13 +7,13 @@ import threading
 class checkBox:
 
     NOT_SELECTED = "[ ]"
-    IS_SELECTED = "[x]"
+    IS_SELECTED = "[X]"
 
     START_POINTER = ">"
     END_POINTER = "<"
 
     def __init__(self, options,
-                 title="Select with arrow keys and spacebar",
+                 title=f"Select with {bcolors.OKBLUE}arrow keys{bcolors.ENDC} and {bcolors.OKBLUE}spacebar{bcolors.ENDC}",
                  min_select=0,
                  pre_selection=None,
                  callback=None
@@ -81,6 +81,7 @@ class checkBox:
 
         if key in [keyboard.Key.enter, keyboard.Key.esc]:
             self.listener.stop()
+            system("clear")
             if self.callback:
                 self.callback(self.selected)
 

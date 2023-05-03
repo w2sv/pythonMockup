@@ -32,6 +32,9 @@ class TransparentImageOverlay:
             self.removeScreenshotTemp()
 
     def process_green_pixels(self, input_image):
+        # TODO: Nur innerhalb der Screen-Punkte suchen
+        # Bisher wird das ganze Bild abgesucht
+
         print("...generate screen alpha-channel")
         height, width, channels = input_image.shape
 

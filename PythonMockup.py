@@ -1,4 +1,6 @@
-from libs.Promt import PromtManager
+import os
+
+from libs.promt import PromtManager
 from libs.selenium import WebsiteScreenshot
 from libs.imageFusion import TransparentImageOverlay
 import time as t
@@ -13,26 +15,39 @@ class PythonMockup:
 
     def process(self, selectedDevices, promterInstance):
 
+        # create new output folder
+        folderName = self.sanitze(promterInstance.url)
+        newPath = f"output/{folderName}/"
+
+        if not os.path.exists(newPath):
+            os.makedirs(newPath)
+
+        # start selenium Engine
+        screenshotEngine = WebsiteScreenshot(
+            url=promterInstance.url,
+            cookieClass=promterInstance.hideClass,
+            waitTime=5
+        )
+
         for x in range(len(selectedDevices)):
             mockup = selectedDevices[x]
 
-            print(f"{bcolors.UNDERLINE}Device generating: {mockup.get('name')}{bcolors.ENDC}")
+            print(f"\n{bcolors.UNDERLINE}Device generating: {mockup.get('name')}{bcolors.ENDC}")
 
             screenshotSize = mockup.get("screen")
-            screenshot = WebsiteScreenshot(
-                url=promterInstance.url,
-                width=screenshotSize.get("width"),
-                height=screenshotSize.get("height"),
-                cookieClass=promterInstance.hideClass,
-                waitTime=5
+            newScreenshot = screenshotEngine.take_screenshot(
+                screenshotSize.get("width"),
+                screenshotSize.get("height")
             )
+
+            print(newScreenshot)
 
             # Create new Overlay Image
             print("Starting image processor")
             screenPos = mockup.get("position")
             photoBooth = TransparentImageOverlay(
                 bottom_image_path=mockup.get("mockupImage"),
-                top_image_path=screenshot.tempPath,
+                top_image_path=newScreenshot,
                 points=[
                     screenPos["p1"],
                     screenPos["p2"],
@@ -41,10 +56,13 @@ class PythonMockup:
                 ]
             )
 
-            fileName = "".join(x for x in mockup.get("name") if x.isalnum())
+            fileName = self.sanitze(mockup.get("name"))
+            imgName = newPath + fileName + ".png"
 
-            imgName = f"output/{fileName}-{t.time()}.png";
             photoBooth.overlay_images(imgName, keepScreenshot=False)
+
+    def sanitze(self, string):
+        return "".join(x for x in string if x.isalnum())
 
 
 PythonMockup()
