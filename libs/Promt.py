@@ -1,19 +1,13 @@
 import json
-import sys
-
+from libs.checkbox import checkbox
 
 class PromtManager:
 
-    def __init__(self, device_id = 0):
-
-        # Load only Device Mockup
-        with open('src/mockups.json', 'r') as f:
-            deviceInfo = json.load(f)
-            self.mockupDevice = deviceInfo[device_id]
-            print(f"Generating mockup for {self.mockupDevice['name']}")
-
+    def __init__(self):
         self.url = self.getURL()
         self.hideClass = self.getHideClass()
+
+        self.selection = self.selectDevices()
 
 
     def getURL(self):
@@ -34,3 +28,20 @@ class PromtManager:
             print(f"\n...will hide all elements with [{removeClass}] class name\n")
 
         return removeClass
+
+    def selectDevices(self):
+
+        # Load only Device Mockup
+        with open('src/mockups.json', 'r') as f:
+            deviceInfo = json.load(f)
+            deviceOptions = []
+            preSelect = []
+            for n in range(len(deviceInfo)):
+                deviceOptions.append(deviceInfo[n]['name'])
+                preSelect.append(n)
+
+            checkMod = checkbox(
+                options=deviceOptions,
+                pre_selection=preSelect
+            )
+

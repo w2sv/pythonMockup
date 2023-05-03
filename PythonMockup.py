@@ -4,7 +4,7 @@ from libs.imageFusion import TransparentImageOverlay
 import time as t
 
 # Initilize information query
-consoleInterface = PromtManager(0)
+consoleInterface = PromtManager()
 
 # Take Screenshot
 mockup = consoleInterface.mockupDevice
