@@ -9,7 +9,15 @@ class checkbox:
     START_POINTER = ">"
     END_POINTER = "<"
 
-    def __init__(self,options, title="Select with arrow keys and spacebar", min_select=0, pre_selection=[]):
+    def __init__(self, options,
+                 title="Select with arrow keys and spacebar",
+                 min_select=0,
+                 pre_selection=[],
+                 callback=None
+    ):
+
+        self.callback = callback
+
         self.title = title
         self.options = options
         self.min = min_select
@@ -69,6 +77,8 @@ class checkbox:
 
         if key in [keyboard.Key.enter, keyboard.Key.esc]:
             self.listener.stop()
+            if self.callback:
+                self.callback(self.selected)
 
     def nav(self, dir):
         if dir:

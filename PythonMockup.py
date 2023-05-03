@@ -6,6 +6,7 @@ import time as t
 # Initilize information query
 consoleInterface = PromtManager()
 
+exit()
 # Take Screenshot
 mockup = consoleInterface.mockupDevice
 screenshotSize = mockup.get("screen")

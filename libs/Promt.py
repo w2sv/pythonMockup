@@ -6,9 +6,7 @@ class PromtManager:
     def __init__(self):
         self.url = self.getURL()
         self.hideClass = self.getHideClass()
-
-        self.selection = self.selectDevices()
-
+        self.devices = self.selectDevices()
 
     def getURL(self):
         url = input("Please enter the url to the Webpage you want to create a mockup for:\n")
@@ -40,8 +38,18 @@ class PromtManager:
                 deviceOptions.append(deviceInfo[n]['name'])
                 preSelect.append(n)
 
-            checkMod = checkbox(
+            checkbox(
                 options=deviceOptions,
-                pre_selection=preSelect
+                pre_selection=preSelect,
+                callback=self.getSelection
             )
+
+            return deviceInfo
+
+    def getSelection(self, selected_indices):
+        print("SELECTED")
+        for x in range(len(self.devices)):
+            if x in selected_indices:
+                print(self.devices[x]['name'])
+
 
