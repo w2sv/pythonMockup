@@ -110,4 +110,4 @@ class WebsiteScreenshot:
     def closeBrowser(self):
         # Close the webdriver
         self.driver.quit()
-        print(f"\n{bcolors.OKGREEN}All mockups generated successfully{bcolors.ENDC}")
+        print(f"\n{bcolors.OKGREEN}All mockups generated successfully{bcolors.ENDC}\n")
