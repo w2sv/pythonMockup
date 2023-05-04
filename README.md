@@ -45,6 +45,7 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 **Feature roadmap**
 --
 - [ ] add better screen glow
+- [ ] option to remove **multiple** classes / id's (DOM hiding for gdpr)
 - [ ] add optional color and gradient **background**
 
 - [ ] Auto-Detect 4-point screen perspective with image processing

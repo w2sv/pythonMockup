@@ -33,7 +33,6 @@ class PromtManager:
         return removeClass
 
     def selectDevices(self):
-
         # Load only Device Mockup
         with open('src/mockups.json', 'r') as f:
             deviceInfo = json.load(f)
