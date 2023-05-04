@@ -22,11 +22,11 @@ class TransparentImageOverlay:
         screen_glow = self.create_border_glow(transformed_screen, background.shape)
 
         layer1 = self.overlay(screen_glow, background)
-        #layer2 = self.overlay(transformed_screen, layer1)
-        #layer3 = self.overlay(screen_glare, layer2)
+        layer2 = self.overlay(transformed_screen, layer1)
+        layer3 = self.overlay(screen_glare, layer2)
 
         # Save the new image in BGRA format
-        cv2.imwrite(output_path, layer1)
+        cv2.imwrite(output_path, layer3)
 
         if keepScreenshot is False:
             self.removeScreenshotTemp()
