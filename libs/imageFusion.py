@@ -19,14 +19,14 @@ class TransparentImageOverlay:
 
         # Transform and Mask Screenshot
         transformed_screen = self.add_four_point_transform(screenshot, background.shape, alpha_screen)
-        # screen_glow = self.create_border_glow(transformed_screen, background.shape)
+        screen_glow = self.create_border_glow(transformed_screen, background.shape)
 
-        #layer1 = self.overlay(screen_glow, background)
-        layer2 = self.overlay(transformed_screen, background)
-        layer3 = self.overlay(screen_glare, layer2)
+        layer1 = self.overlay(screen_glow, background)
+        #layer2 = self.overlay(transformed_screen, layer1)
+        #layer3 = self.overlay(screen_glare, layer2)
 
         # Save the new image in BGRA format
-        cv2.imwrite(output_path, layer3)
+        cv2.imwrite(output_path, layer1)
 
         if keepScreenshot is False:
             self.removeScreenshotTemp()
@@ -61,52 +61,33 @@ class TransparentImageOverlay:
 
         return alpha_mask, overlay_layer
 
-
-    def create_border_glow(self, screen, bg_shape, glow_radius= 300, glow_intensity=2):
+    def create_border_glow(self, screen, bg_shape, darkThreshold = 0.2):
         h, w = bg_shape[:2]
 
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
         empty_image = np.zeros((h, w, 4), dtype=np.uint8)
         image = self.overlay(screen, empty_image)
 
-        border_mask = self.detect_borders(image)
-        border_mask = border_mask.astype(np.float32) / 255.0
+        # blur new generated image violently
+        blurred = cv2.blur(image, (100, 100))
+        def bezier_curve(t, sludge):
+            p1 = [0,sludge]
+            p2 = [1 - sludge, 1]
+            return ((1 - t) ** 3 * p1[0]) + (3 * (1 - t) ** 2 * t * p1[1]) + (3 * (1 - t) * t ** 2 * p2[0]) + (t ** 3 * p2[1])
 
-        glow = np.zeros((h, w, 4), dtype=np.float32)
-        glow[:, :, :3] = image[:, :, :3].astype(np.float32) / 255.0
-        glow[:, :, 3] = border_mask
+        def adjust_alpha(pixel):
+            color_value = np.mean(pixel[:3]) / 255
+            color_value = bezier_curve(color_value, sludge=0.6)
+            pixel[3] = color_value * 255
+            return pixel
 
-        ksize = 2 * (glow_radius // 2) + 1
-        blurred_glow = cv2.GaussianBlur(glow, (ksize, ksize), 0)
+        # Apply the alpha adjustment
+        for i in range(blurred.shape[0]):
+            for j in range(blurred.shape[1]):
+                blurred[i, j] = adjust_alpha(blurred[i, j])
 
-        img_float = image.astype(np.float32) / 255.0
-        intensified_glow = blurred_glow * glow_intensity
+        return blurred
 
-        alpha_glow = intensified_glow[:, :, 3]
-        alpha_image = img_float[:, :, 3]
-        alpha_combined = alpha_glow + (1 - alpha_glow) * alpha_image
-
-        output = np.copy(img_float)
-        for c in range(3):
-            output[:, :, c] = np.divide(
-                alpha_glow * intensified_glow[:, :, c] + (1 - alpha_glow) * img_float[:, :, c] * alpha_image,
-                alpha_combined,
-                out=np.zeros_like(alpha_combined),
-                where=(alpha_combined != 0)
-            )
-        output[:, :, 3] = (1 - alpha_image) * alpha_glow
-
-        return (output * 255.0).astype(np.uint8)
-
-    def detect_borders(self, image):
-        gray = cv2.cvtColor(image, cv2.COLOR_BGRA2GRAY)
-        _, thresholded = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY)
-
-        contours, _ = cv2.findContours(thresholded, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        border_mask = np.zeros_like(thresholded)
-        cv2.drawContours(border_mask, contours, -1, 255, 1)
-
-        return border_mask
 
     def add_four_point_transform(self, screenshot, background_shape, mask):
         print("...transforming Screenshot")

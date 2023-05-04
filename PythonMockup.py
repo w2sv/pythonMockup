@@ -27,7 +27,7 @@ class PythonMockup:
         # start selenium Engine
         screenshotEngine = WebsiteScreenshot(
             url=promterInstance.url,
-            directory=newPath + "temp/",
+            directory=newPath + ".temp/",
             cookieClass=promterInstance.hideClass,
             waitTime=5,
         )

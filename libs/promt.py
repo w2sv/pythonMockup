@@ -7,7 +7,7 @@ class PromtManager:
     def __init__(self, callback=None):
         self.url = self.getURL()
         self.hideClass = self.getHideClass()
-        self.devices = self.selectDevices()
+        self.devices = self.getDevices()
 
         self.callback = callback
 
@@ -32,7 +32,7 @@ class PromtManager:
 
         return removeClass
 
-    def selectDevices(self):
+    def getDevices(self):
         # Load only Device Mockup
         with open('src/mockups.json', 'r') as f:
             deviceInfo = json.load(f)
