@@ -18,7 +18,7 @@ class PythonMockup:
 
         # create new output folder
         webNameInfo = tldextract.extract(promterInstance.url)
-        folderName = self.sanitze(webNameInfo.subdomain + webNameInfo.domain)
+        folderName = self.sanitize(webNameInfo.subdomain + webNameInfo.domain)
         newPath = f"output/{folderName}/"
 
         if not os.path.exists(newPath):
@@ -27,7 +27,7 @@ class PythonMockup:
         # start selenium Engine
         screenshotEngine = WebsiteScreenshot(
             url=promterInstance.url,
-            directory=newPath + ".temp/",
+            directory=newPath+".temp/",
             cookieClass=promterInstance.hideClass,
             waitTime=5,
         )
@@ -57,7 +57,7 @@ class PythonMockup:
                 ]
             )
 
-            fileName = self.sanitze(mockup.get("name"))
+            fileName = self.sanitize(mockup.get("name"))
             imgName = newPath + fileName + ".png"
 
             photoBooth.overlay_images(imgName, keepScreenshot=False)
@@ -69,7 +69,7 @@ class PythonMockup:
 
         screenshotEngine.closeBrowser()
 
-    def sanitze(self, string):
+    def sanitize(self, string):
         return "".join(x for x in string if x.isalnum())
 
 
