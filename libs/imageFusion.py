@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import os
+import math
 from math import pi, cos, sin
 
 class TransparentImageOverlay:
@@ -59,35 +60,104 @@ class TransparentImageOverlay:
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(gray, 75, 200)
 
-        # Contour to ContourLines
-        cnts = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        # Only get Point array
-        cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+        #cv2.imwrite("output/countour.png", edged)
 
-        # Filter the contours by area
-        MIN_CONTOUR_AREA = 1000
-        cnts = [cnt for cnt in cnts if cv2.contourArea(cnt) > MIN_CONTOUR_AREA]
+        contours, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        # Iterate over the remaining contours
-        for cnt in cnts:
-            # Approximate the contour to obtain a polygonal approximation
-            epsilon = 0.05 * cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, epsilon, True)
+        lines = np.array(self.find_edge_coordinates(contours))
+        collinear_lines = self.find_collinear_lines(lines)[:4]
 
-            print(approx)
+        if len(collinear_lines) < 4:
+            print("Could not find any screen")
+            return
 
-            # Check if the polygonal approximation has exactly four corners
+        for line in collinear_lines:
+            p1, p2 = line
+            cv2.line(img, p1, p2, (255, 0, 0, 255), 5)  # draw line in green color with thickness of 2
+
+        # Draw the rectangle on the image
+        cv2.imwrite("output/test.png", img)
+
+
+    def find_edge_coordinates(self, contours):
+        # Iterate over the contours and find the rectangle with rounded corners
+        lines = []
+
+        for cnt in contours:
+            # Approximate the contour with a polygon
+
+            perimeter = cv2.arcLength(cnt, True)
+            approx = cv2.approxPolyDP(cnt, 0.1 * perimeter, True)
+#
+            # Check if the polygon has four sides
             if len(approx) == 4:
-                # Check if the polygonal approximation is a closed shape
-                if np.allclose(approx[0], approx[-1], rtol=0, atol=10):
-                    # Extract the four corner points
-                    corners = np.squeeze(approx)
-                    print("Corner points:", corners)
-                    break
+                print("This contour has roughly 4 sides")
 
-        # cv2.drawContours(img, [cnts], -1, (0, 255, 0), 2)
+                # Reduce Point count
+                somePoints = cnt[::2]
+                for ix, val in enumerate(somePoints):
+                    if ix >= len(somePoints) - 1:
+                        break
 
-        # cv2.imwrite("output/test.png", img)
+                    current_point = somePoints[ix][0]
+                    next_point = somePoints[ix+1][0]
+
+                    lines.append((current_point, next_point))
+                break
+        return lines
+
+    def find_collinear_lines(self, lineArr):
+        edges = []
+
+        def line_slope(line):
+            epsilon = 1e-6
+            (x1, y1), (x2, y2) = line
+
+            if x2-x1 < epsilon:
+                slope = 999
+            else:
+                slope = (y2 - y1) / (x2 - x1)
+
+            return slope
+
+        line_builder = []
+        for ix, line in enumerate(lineArr):
+            if ix >= len(lineArr) - 1:
+                break
+
+            current_line = lineArr[ix]
+            next_line = lineArr[ix+1]
+
+            current_slope = line_slope(current_line)
+            next_slope = line_slope(next_line)
+
+            if current_slope == next_slope:
+
+                if len(line_builder) < 1:
+                    # start new Line segment
+                    line_builder = [current_line[0], next_line[1]]
+                else:
+                    # add line end to segment
+                    line_builder[1] = next_line[1]
+
+            else:
+                if len(line_builder) > 1:
+                    # previous line was collinear, but this one isn't anymore
+                    edges.append(line_builder)
+                    line_builder = []
+
+        print(edges)
+        return edges
+
+    def getBiggest(self, lineArray):
+        def line_length(line):
+            (x1, y1), (x2, y2) = line
+            return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+        biggestLines = sorted(lineArray, key=line_length, reverse=True)[:4]
+
+        return biggestLines
+
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
