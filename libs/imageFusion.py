@@ -248,15 +248,27 @@ class TransparentImageOverlay:
 
         # Sort lines by y-coordinate of p1 (smallest first)
         lines.sort(key=lambda line: line[0][1])
-        top_line = lines.pop(0)
+        # either leftLine-top | topLine-both | rightLine-top
+        # start with topLine -> p2-y of leftLine|rightLine is bigger than p2-y of topLine
+        first_three = list(enumerate(lines[:3]))
+        # find index of smallest p2-y
+        three_index, small_yP2_line = min(first_three, key=lambda index_linie: index_linie[1][1][1])
+        top_line = lines.pop(three_index)
+
 
         # Sort remaining lines by x-coordinate of p1 (largest first)
         lines.sort(key=lambda line: line[0][0], reverse=True)
-        right_line = lines.pop(0)
+        # either rightLine-both | bottomLine-right
+        # continue with rightLine -> p2-x of bottomLine is smaller than p2-x of rightLine
+        pop_index = 0 if lines[0][1][0] > lines[1][1][0] else 1
+        right_line = lines.pop(pop_index)
 
         # Sort remaining lines by y-coordinate of p1 (largest first)
         lines.sort(key=lambda line: line[0][1], reverse=True)
-        bottom_line = lines.pop(0)
+        # either bottomLine-both | leftLine-bottom
+        # continue with bottomLine -> p2-y > leftline-p2-y
+        last_pop_index = 0 if lines[0][1][1] > lines[1][1][1] else 1
+        bottom_line = lines.pop(last_pop_index)
 
         # The last line is the remaining one
         last_line = lines[0]
