@@ -1,5 +1,8 @@
-# PythonMockup v0.91
+# PythonMockup v0.92
+
+## Notice
 Still under development. Feel free to use or contribute!
+Screen recognition only works reliable with provided mockups in `mockups.json`
 
 ### Python lib for generating device mockups from live web urls
 
@@ -13,7 +16,8 @@ Still under development. Feel free to use or contribute!
 - Takes screenshot(s) in desired aspect-ratio(s)
 - Exclude HTML-DOM elements from website by class-name
 - Adapts max screenshot-resolution depending on user screen resolution
-- It's possible to include own mockups in 'src/'-Folder and add them in 'mockups.json'
+- Multiple mockups per device in one go
+- It's possible to include own mockups in `'./src/mockup/'`-Folder and add them in `mockups.json`. This feature might be still a little bit buggy
 
 To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
 
@@ -43,7 +47,7 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 - [x] selection which device-mockups to use
 - [x] add better screen glow
 - [x] Auto-Detect 4-point screen perspective with image processing
-- 
+
 **Feature roadmap**
 --
 - [ ] option to remove **multiple** classes / id's (DOM hiding for gdpr)

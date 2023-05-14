@@ -42,7 +42,7 @@ class PromtManager:
         deviceOptions = []
         preSelect = []
         for n in range(len(self.devices)):
-            deviceOptions.append(self.devices[n]['name'])
+            deviceOptions.append(self.devices[n].get('name')+f" - ({len(self.devices[n].get('mockupImage'))})")
             preSelect.append(n)
 
         checkBox(

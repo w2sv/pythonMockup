@@ -12,6 +12,7 @@ class TransparentImageOverlay:
 
         self.transformPoints = []
         self.crossToleranz = 150
+        self.perimterToleranz = 0.03
 
 
     def overlay_images(self, folder, file, keepScreenshot=False):
@@ -37,6 +38,8 @@ class TransparentImageOverlay:
         bg_size = (w, h)
 
         # Oeffne Screenshot
+        if not os.path.isfile(self.top_image_path):
+            raise Exception(f"{bcolors.FAIL}Could not find screenshot file on drive.{bcolors.ENDC}")
         screenshot = cv2.imread(self.top_image_path, cv2.IMREAD_UNCHANGED)
 
         # Get Mask from Green Pixels for Screenshot masking, calculate glare from green offset
@@ -54,7 +57,7 @@ class TransparentImageOverlay:
         return self.overlay(screen_glare, layer2)
 
     def getScreenPoints(self, img, dir, file):
-        print(f"{bcolors.UNDERLINE}calculation screen position on mockup:{bcolors.ENDC}")
+        print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
         # Convert the image to HSV color space
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -73,11 +76,16 @@ class TransparentImageOverlay:
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(gray, 75, 200)
+        cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
+
 
         print("...approximate contours")
         # aproximate Points from contour lines
         contours, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         lines = np.array(self.contour_to_lines(contours))
+
+        if len(lines) < 1:
+            raise Exception(f"{bcolors.FAIL}Could not find any contours{bcolors.ENDC}")
 
         demoImage = img.copy()
         for line in lines:
@@ -88,33 +96,46 @@ class TransparentImageOverlay:
         # calculate only collinear lines from all lines
         print("...generate collinear lines from contours")
         collinear_lines = self.find_collinear_lines(lines)
-        if len(collinear_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find any screen{bcolors.ENDC}")
 
         for line in collinear_lines:
             p1, p2 = line
-            cv2.line(demoImage, p1, p2, (0, 0, 255, 255), 5)
+            cv2.line(demoImage, p1, p2, (0, 0, 150, 255), 5)
         cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
 
+        if len(collinear_lines) < 4:
+            raise Exception(f"{bcolors.FAIL}Could not find screen border from collinear lines{bcolors.ENDC}")
 
         # get four biggest lines from array
         print("...calculate line interception")
 
         border_lines = self.get_biggest(collinear_lines)
 
+        if len(border_lines) > 1:
+            for lineF in border_lines:
+                p1, p2 = lineF
+                cv2.circle(demoImage, p1, 20, (255, 255, 255, 255), 3)
+                cv2.circle(demoImage, p2, 20, (255, 255, 255, 255), 3)
+                cv2.line(demoImage, p1, p2, (0, 0, 255, 255), 3)
+
+            cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
+
         if len(border_lines) < 4:
             raise Exception(f"{bcolors.FAIL}Could not find any screen{bcolors.ENDC}")
+
 
         # calculate intersection points from four lines
         screen_coordinates = self.rectangle_intersections(border_lines)
 
-        for pt in screen_coordinates:
-            cv2.circle(demoImage, pt, 15, (0, 0, 255, 255), 3)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+        if len(screen_coordinates) > 1:
+            for pt in screen_coordinates:
+                cv2.circle(demoImage, pt, 15, (0, 0, 255, 255), 5)
+            cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+
+        if len(screen_coordinates) != 4:
+            raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
 
         # draw Demo Image
         return screen_coordinates
-
 
     def contour_to_lines(self, contours):
         # Iterate over the contours and find the rectangle with rounded corners
@@ -122,35 +143,41 @@ class TransparentImageOverlay:
 
         for cnt in contours:
             # Approximate the contour with a polygon
-
             perimeter = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, 0.1 * perimeter, True)
+            approx = cv2.approxPolyDP(cnt, self.perimterToleranz * perimeter, True)
 #
             # Check if the polygon has four sides
             if len(approx) == 4:
                 print(f"{bcolors.OKGREEN}Screen-contour found on mockup{bcolors.ENDC}")
 
                 # Reduce Point count for better results
-                cnt_reduced = cnt
-                for ix, val in enumerate(cnt_reduced):
-                    if ix >= len(cnt_reduced) - 1:
+                for ix, val in enumerate(cnt):
+                    if ix >= len(cnt) - 1:
                         break
 
-                    current_point = cnt_reduced[ix][0]
-                    next_point = cnt_reduced[ix+1][0]
+                    current_point = cnt[ix][0]
+                    next_point = cnt[ix+1][0]
 
                     lines.append((current_point, next_point))
                 break
+
+
         return lines
 
-    def line_to_vector(self, l1):
-        return (
+    def line_to_vector(self, l1, normalize=False):
+        vector = (
             l1[1][0] - l1[0][0],
             l1[1][1] - l1[0][1]
         )
 
+        if normalize:
+            magnitude = math.sqrt(sum(component**2 for component in vector))
+            return tuple(component/magnitude for component in vector)
+
+        return vector
+
     def cross_product(self, v1, v2):
-        crossProduct = v1[0] * v2[1] - v1[1] * v2[0]
+        crossProduct = ( v1[0] * v2[1] ) - ( v1[1] * v2[0] )
         return abs(crossProduct)
 
     def find_collinear_lines(self, lineArr):
@@ -163,20 +190,19 @@ class TransparentImageOverlay:
             if ix >= len(lineArr) - 1:
                 break
 
-            current_line = lineArr[ix]
+            current_line = line
             next_line = lineArr[ix+1]
 
             emptyLine = len(line_builder) < 1
 
             # Make Vektors from Line Segments
             if emptyLine:
-                v1,v2 = self.line_to_vector(current_line), self.line_to_vector(next_line)
+                v1, v2 = self.line_to_vector(current_line), self.line_to_vector(next_line)
             else:
-                v1,v2 = self.line_to_vector(line_builder), self.line_to_vector(next_line)
+                v1, v2 = self.line_to_vector(line_builder), self.line_to_vector(next_line)
 
-            crossProduct = self.cross_product(v1,v2)
+            crossProduct = self.cross_product(v1, v2)
             crossDifference = abs(crossProduct - last_crossProduct)
-            #print(crossProduct, crossDifference)
 
             last_crossProduct = crossProduct
 
@@ -220,32 +246,22 @@ class TransparentImageOverlay:
 
             return int(x), int(y)
 
-        # get lines in right order
-        l_arr = [(),(),(),()]
-        for l in lines:
-            xDif,yDif = (l[0][0] - l[1][0], l[0][1] - l[1][1])
-            is_vertical = abs(yDif) > abs(xDif)
+        # Sort lines by y-coordinate of p1 (smallest first)
+        lines.sort(key=lambda line: line[0][1])
+        top_line = lines.pop(0)
 
-            if is_vertical:
-                # add to first or third
-                if len(l_arr[0]) < 1:
-                    l_arr[0] = l
-                else:
-                    if len(l_arr[2]) < 1:
-                        l_arr[2] = l
-                    else:
-                        # wrong sorting -> fill last
-                        return
-            else:
-                # add to second or fourth
-                if len(l_arr[1]) < 1:
-                    l_arr[1] = l
-                else:
-                    if len(l_arr[3]) < 1:
-                        l_arr[3] = l
-                    else:
-                        # wrong sorting -> fill before last
-                        return
+        # Sort remaining lines by x-coordinate of p1 (largest first)
+        lines.sort(key=lambda line: line[0][0], reverse=True)
+        right_line = lines.pop(0)
+
+        # Sort remaining lines by y-coordinate of p1 (largest first)
+        lines.sort(key=lambda line: line[0][1], reverse=True)
+        bottom_line = lines.pop(0)
+
+        # The last line is the remaining one
+        last_line = lines[0]
+
+        l_arr = [top_line, right_line, bottom_line, last_line]
 
         p1,p2,p3,p4 = line_intersection(l_arr[0], l_arr[1]), line_intersection(l_arr[1], l_arr[2]), line_intersection(l_arr[2], l_arr[3]), line_intersection(l_arr[3], l_arr[0])
 
@@ -258,7 +274,6 @@ class TransparentImageOverlay:
 
         return points
 
-
     def get_biggest(self, lineArray):
         def length(line):
             (x1, y1), (x2, y2) = line
@@ -268,11 +283,12 @@ class TransparentImageOverlay:
         bigger = lineArray[:4]
         return bigger
 
+
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
         # Bisher wird das ganze Bild abgesucht
 
-        print(f"{bcolors.UNDERLINE}Generate screen alpha-channel{bcolors.ENDC}")
+        print(f"{bcolors.OKCYAN}Generate screen alpha-channel{bcolors.ENDC}")
         height, width, channels = input_image.shape
 
         # Initialize empty images for the alpha mask and the overlay layer
@@ -299,12 +315,13 @@ class TransparentImageOverlay:
         return alpha_mask, overlay_layer
 
     def create_border_glow(self, screen, size):
-        print(f"{bcolors.UNDERLINE}calculating screen glow{bcolors.ENDC}")
+        print(f"{bcolors.OKCYAN}calculating screen glow{bcolors.ENDC}")
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
         empty_image = np.zeros((size[1], size[0], 4), dtype=np.uint8)
         image = self.overlay(screen, empty_image)
 
         # blur new generated image violently
+        print("...blurr image")
         blurred = cv2.blur(image, (100, 100))
         def bezier_curve(t, sludge):
             p1 = [0,sludge]
@@ -318,6 +335,7 @@ class TransparentImageOverlay:
             return pixel
 
         # Apply the alpha adjustment
+        print("...adjust blurr opacity based on brightness")
         for i in range(blurred.shape[0]):
             for j in range(blurred.shape[1]):
                 blurred[i, j] = adjust_alpha(blurred[i, j])
@@ -325,7 +343,7 @@ class TransparentImageOverlay:
         return blurred
 
     def add_four_point_transform(self, screenshot, size, mask):
-        print(f"{bcolors.UNDERLINE}transforming screenshot{bcolors.ENDC}")
+        print(f"{bcolors.OKCYAN}transforming screenshot{bcolors.ENDC}")
         # Calculate the 4-point transformation
         pts_src = np.array(
             [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],

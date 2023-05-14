@@ -45,14 +45,22 @@ class PythonMockup:
 
             # Create new Overlay Image
             print("Starting image processor")
-            photoBooth = TransparentImageOverlay(
-                bottom_image_path=mockup.get("mockupImage"),
-                top_image_path=newScreenshot
-            )
 
-            fileName = self.sanitize(mockup.get("name"))
+            mockupArr = mockup.get("mockupImage")
+            for ix,n in enumerate(mockupArr):
+                if not os.path.isfile(n):
+                    continue
 
-            photoBooth.overlay_images(newPath, fileName, keepScreenshot=False)
+                realIndx = ix+1
+                print(f"\n{bcolors.HEADER}Generating {realIndx}/{len(mockupArr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
+                photoBooth = TransparentImageOverlay(
+                    bottom_image_path=n,
+                    top_image_path=newScreenshot
+                )
+
+                fileName = self.sanitize(mockup.get("name")) + f"-{(ix+1):02d}"
+
+                photoBooth.overlay_images(newPath, fileName, keepScreenshot= (realIndx < len(mockupArr)))
 
 
         screenshotEngine.closeBrowser()
