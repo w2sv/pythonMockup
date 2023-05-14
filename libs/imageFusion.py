@@ -54,7 +54,7 @@ class TransparentImageOverlay:
         return self.overlay(screen_glare, layer2)
 
     def getScreenPoints(self, img, dir, file):
-        print("calculation screen position on mockup:")
+        print(f"{bcolors.UNDERLINE}calculation screen position on mockup:{bcolors.ENDC}")
         # Convert the image to HSV color space
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
@@ -272,7 +272,7 @@ class TransparentImageOverlay:
         # TODO: Nur innerhalb der Screen-Punkte suchen
         # Bisher wird das ganze Bild abgesucht
 
-        print("...generate screen alpha-channel")
+        print(f"{bcolors.UNDERLINE}Generate screen alpha-channel{bcolors.ENDC}")
         height, width, channels = input_image.shape
 
         # Initialize empty images for the alpha mask and the overlay layer
@@ -299,7 +299,7 @@ class TransparentImageOverlay:
         return alpha_mask, overlay_layer
 
     def create_border_glow(self, screen, size):
-        print("calculating screen glow")
+        print(f"{bcolors.UNDERLINE}calculating screen glow{bcolors.ENDC}")
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
         empty_image = np.zeros((size[1], size[0], 4), dtype=np.uint8)
         image = self.overlay(screen, empty_image)
@@ -325,7 +325,7 @@ class TransparentImageOverlay:
         return blurred
 
     def add_four_point_transform(self, screenshot, size, mask):
-        print("...transforming screenshot")
+        print(f"{bcolors.UNDERLINE}transforming screenshot{bcolors.ENDC}")
         # Calculate the 4-point transformation
         pts_src = np.array(
             [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],
