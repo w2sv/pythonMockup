@@ -227,14 +227,22 @@ class TransparentImageOverlay:
                 if len(l_arr[0]) < 1:
                     l_arr[0] = l
                 else:
-                    l_arr[2] = l
+                    if len(l_arr[2]) < 1:
+                        l_arr[2] = l
+                    else:
+                        # wrong sorting -> fill last
+                        l_arr[3] = l
             else:
                 print("-> line horizontal", l)
                 # add to second or fourth
                 if len(l_arr[1]) < 1:
                     l_arr[1] = l
                 else:
-                    l_arr[3] = l
+                    if len(l_arr[3]) < 1:
+                        l_arr[3] = l
+                    else:
+                        # wrong sorting -> fill before last
+                        l_arr[2] = l
 
         p1,p2,p3,p4 = line_intersection(l_arr[0], l_arr[1]), line_intersection(l_arr[1], l_arr[2]), line_intersection(l_arr[2], l_arr[3]), line_intersection(l_arr[3], l_arr[0])
 

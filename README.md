@@ -1,5 +1,5 @@
-# PythonMockup v0.05
-Still under heavy development. Feel free to use or contribute!
+# PythonMockup v0.91
+Still under development. Feel free to use or contribute!
 
 ### Python lib for generating device mockups from live web urls
 
