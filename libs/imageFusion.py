@@ -12,7 +12,7 @@ class TransparentImageOverlay:
 
         self.transformPoints = []
         self.crossToleranz = 150
-        self.perimterToleranz = 0.03
+        self.perimterToleranz = 0.05
 
 
     def overlay_images(self, folder, file, keepScreenshot=False):
