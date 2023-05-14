@@ -23,7 +23,9 @@ class TransparentImageOverlay:
         # Calculate 4-Point transformation
         self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='float32')
 
-        #exit()
+        for x in self.transformPoints:
+            print(x)
+
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         imageComp = self.applyLayer(background)
 
@@ -33,7 +35,7 @@ class TransparentImageOverlay:
         if keepScreenshot is False:
             self.removeScreenshotTemp()
 
-    def applyLayer(self, bg):
+    def applyLayer(self, bg, easy_mode=False):
         h, w = bg.shape[:2]
         bg_size = (w, h)
 
@@ -47,14 +49,19 @@ class TransparentImageOverlay:
 
         # Transform and Mask Screenshot
         transformed_screen = self.add_four_point_transform(screenshot, bg_size, alpha_screen)
-        screen_glow = self.create_border_glow(transformed_screen, bg_size)
 
-        print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
-        layer1 = self.overlay(screen_glow, bg)
-        print(f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
-        layer2 = self.overlay(transformed_screen, layer1)
-        print(f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
-        return self.overlay(screen_glare, layer2)
+        if not easy_mode:
+            screen_glow = self.create_border_glow(transformed_screen, bg_size)
+
+            print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
+            layer1 = self.overlay(screen_glow, bg)
+            print(f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
+            layer2 = self.overlay(transformed_screen, layer1)
+            print(f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
+            return self.overlay(screen_glare, layer2)
+        print(f"...blending layer")
+        return self.overlay(transformed_screen, bg)
+
 
     def getScreenPoints(self, img, dir, file):
         print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
@@ -76,8 +83,7 @@ class TransparentImageOverlay:
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(gray, 75, 200)
-        cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
-
+        #cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
 
         print("...approximate contours")
         # aproximate Points from contour lines
@@ -122,13 +128,12 @@ class TransparentImageOverlay:
         if len(border_lines) < 4:
             raise Exception(f"{bcolors.FAIL}Could not find any screen{bcolors.ENDC}")
 
-
         # calculate intersection points from four lines
         screen_coordinates = self.get_line_intersection(border_lines)
 
         if len(screen_coordinates) > 1:
             for pt in screen_coordinates:
-                cv2.circle(demoImage, pt, 15, (0, 0, 255, 255), 5)
+                cv2.circle(demoImage, pt, 10, (0, 0, 255, 255), 8)
             cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
 
         if len(screen_coordinates) != 4:
@@ -176,11 +181,12 @@ class TransparentImageOverlay:
 
         return vector
 
-    def cross_product(self, v1, v2):
-        crossProduct = ( v1[0] * v2[1] ) - ( v1[1] * v2[0] )
-        return abs(crossProduct)
-
     def find_collinear_lines(self, lineArr):
+
+        def cross_product(v1, v2):
+            crossProduct = (v1[0] * v2[1]) - (v1[1] * v2[0])
+            return abs(crossProduct)
+
         edges = []
 
         line_builder = ()
@@ -201,9 +207,8 @@ class TransparentImageOverlay:
             else:
                 v1, v2 = self.line_to_vector(line_builder), self.line_to_vector(next_line)
 
-            crossProduct = self.cross_product(v1, v2)
+            crossProduct = cross_product(v1, v2)
             crossDifference = abs(crossProduct - last_crossProduct)
-
             last_crossProduct = crossProduct
 
             if crossDifference < self.crossToleranz:
@@ -246,33 +251,32 @@ class TransparentImageOverlay:
                 y = m1 * x + b1
 
             # Only return the point if it's within the desired range
-            if 0 <= x <= 3000 and 0 <= y <= 3000:
+            if 0 <= x <= 5000 and 0 <= y <= 5000:
                 return x, y
             else:
                 return None
-
         def angle(point):
             x, y = point
             return math.atan2(y, x)
+
+        def distance_to_origin(point):
+            x, y = point
+            return math.sqrt(x ** 2 + y ** 2)
 
         intersections = []
         for i in range(4):
             for j in range(i + 1, 4):
                 point = intersection(lines[i], lines[j])
-                if point:
+                if point is not None:
                     intersections.append(point)
 
-        # Shifting the origin to the minimum point for correct angle calculation
-        min_point = min(intersections, key=lambda p: (p[1], p[0]))
-        intersections = [(p[0] - min_point[0], p[1] - min_point[1]) for p in intersections]
+        intersections = sorted(intersections, key=distance_to_origin)[:4]
+        origin_min_distance_point = min(intersections, key=distance_to_origin)
+        intersections = sorted(intersections, key=angle)
+        intersections.remove(origin_min_distance_point)
+        intersections = [origin_min_distance_point] + intersections
 
-        # Sorting intersections based on their angle
-        intersections.sort(key=angle)
-
-        # Shifting back the origin and cast to int
-        intersections = [(int(p[0] + min_point[0]), int(p[1] + min_point[1])) for p in intersections]
-
-        return intersections
+        return [(int(x), int(y)) for x, y in intersections]
 
     def get_biggest(self, lineArray):
         def length(line):
