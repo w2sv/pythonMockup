@@ -192,7 +192,6 @@ class TransparentImageOverlay:
 
     def rectangle_intersections(self, lines):
         def line_intersection(line1, line2):
-            print(line1, line2)
             xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
             ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
 
@@ -222,7 +221,6 @@ class TransparentImageOverlay:
             is_vertical = abs(yDif) > abs(xDif)
 
             if is_vertical:
-                print("-> line vertical", l)
                 # add to first or third
                 if len(l_arr[0]) < 1:
                     l_arr[0] = l
@@ -233,7 +231,6 @@ class TransparentImageOverlay:
                         # wrong sorting -> fill last
                         l_arr[3] = l
             else:
-                print("-> line horizontal", l)
                 # add to second or fourth
                 if len(l_arr[1]) < 1:
                     l_arr[1] = l
