@@ -3,27 +3,15 @@
     "name" : "MacBook Air M1",
     "mockupImage": "src/mockup/macbook-air-m1.png",
     "screen" : {
-      "width": 2560,
-      "height": 1600
-    },
-    "position": {
-      "p1" : [630,500],
-      "p2" : [1969,468],
-      "p3" : [1942, 1378],
-      "p4" : [581, 1332]
+      "width": 1600,
+      "height": 1000
     }
   }, {
     "name" : "Iphone 14 Pro",
     "mockupImage": "src/mockup/iphone-14-pro.png",
     "screen" : {
-      "width": 1179,
-      "height": 2556
-    },
-    "position": {
-      "p1" : [167,328],
-      "p2" : [1049,252],
-      "p3" : [964, 1777],
-      "p4" : [260, 1911]
+      "width": 512,
+      "height": 1110
     }
   }, {
     "name" : "XDR-Display",
@@ -31,12 +19,6 @@
     "screen" : {
       "width": 2560,
       "height": 1440
-    },
-    "position": {
-      "p1" : [136,411],
-      "p2" : [1917 ,165],
-      "p3" : [1929, 1499],
-      "p4" : [125, 1439]
     }
   }
 ]

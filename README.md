@@ -41,13 +41,13 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 - [x] Screenshot masking / rounded corners / notch cutout
 - [x] generate different device mockups in one go
 - [x] selection which device-mockups to use
-
+- [x] add better screen glow
+- [x] Auto-Detect 4-point screen perspective with image processing
+- 
 **Feature roadmap**
 --
-- [ ] add better screen glow
 - [ ] option to remove **multiple** classes / id's (DOM hiding for gdpr)
 - [ ] add optional color and gradient **background**
-
-- [ ] Auto-Detect 4-point screen perspective with image processing
+- [ ] Exception-Handling should not break building pipeline
 - [ ] Add way **more device** mockups
 - [ ] User-Interface / Web-Interface

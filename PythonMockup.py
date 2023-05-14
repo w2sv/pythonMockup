@@ -45,27 +45,15 @@ class PythonMockup:
 
             # Create new Overlay Image
             print("Starting image processor")
-            screenPos = mockup.get("position")
             photoBooth = TransparentImageOverlay(
                 bottom_image_path=mockup.get("mockupImage"),
-                top_image_path=newScreenshot,
-                points=[
-                    screenPos["p1"],
-                    screenPos["p2"],
-                    screenPos["p3"],
-                    screenPos["p4"]
-                ]
+                top_image_path=newScreenshot
             )
 
             fileName = self.sanitize(mockup.get("name"))
-            imgName = newPath + fileName + ".png"
 
-            photoBooth.overlay_images(imgName, keepScreenshot=False)
+            photoBooth.overlay_images(newPath, fileName, keepScreenshot=False)
 
-
-        tempPath = "/".join(newScreenshot.split("/")[:-1]) + "/"
-        os.rmdir(tempPath)
-        print(f"Remove temp folder at {tempPath}")
 
         screenshotEngine.closeBrowser()
 
