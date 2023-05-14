@@ -3,7 +3,8 @@
     "name" : "MacBook Air M1",
     "mockupImage": [
       "src/mockup/macbook-air-m1-01.png",
-      "src/mockup/macbook-air-m1-02.png"
+      "src/mockup/macbook-air-m1-02.png",
+      "src/mockup/macbook-air-m1-03.png"
     ],
     "screen" : {
       "width": 1600,

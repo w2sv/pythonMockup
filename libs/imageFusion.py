@@ -124,7 +124,7 @@ class TransparentImageOverlay:
 
 
         # calculate intersection points from four lines
-        screen_coordinates = self.rectangle_intersections(border_lines)
+        screen_coordinates = self.get_line_intersection(border_lines)
 
         if len(screen_coordinates) > 1:
             for pt in screen_coordinates:
@@ -223,68 +223,56 @@ class TransparentImageOverlay:
 
         return edges
 
-    def rectangle_intersections(self, lines):
-        def line_intersection(line1, line2):
-            xdiff = (line1[0][0] - line1[1][0], line2[0][0] - line2[1][0])
-            ydiff = (line1[0][1] - line1[1][1], line2[0][1] - line2[1][1])
+    def get_line_intersection(self, lines):
+        def line_equation(line):
+            (x1, y1), (x2, y2) = line
+            m = (y2 - y1) / (x2 - x1) if x1 != x2 else float('inf')
+            b = y1 - m * x1
+            return m, b
 
-            def det(a, b):
-                a = np.array(a, dtype=np.float64)
-                b = np.array(b, dtype=np.float64)
-                return a[0] * b[1] - a[1] * b[0]
+        def intersection(line1, line2):
+            m1, b1 = line_equation(line1)
+            m2, b2 = line_equation(line2)
+            if m1 == m2:  # Parallel lines, no intersection
+                return None
+            if m1 == float('inf'):  # Line1 is vertical
+                x = line1[0][0]
+                y = m2 * x + b2
+            elif m2 == float('inf'):  # Line2 is vertical
+                x = line2[0][0]
+                y = m1 * x + b1
+            else:
+                x = (b2 - b1) / (m1 - m2)
+                y = m1 * x + b1
 
-            div = det(xdiff, ydiff)
-            if abs(div) < 1e-6:  # if lines are nearly parallel
-                raise Exception(f'{bcolors.FAIL}Lines are parallel or nearly parallel, intersection is undefined.{bcolors.ENDC}')
+            # Only return the point if it's within the desired range
+            if 0 <= x <= 3000 and 0 <= y <= 3000:
+                return x, y
+            else:
+                return None
 
-            d = (det(*line1), det(*line2))
-            x = det(d, xdiff) / div
-            y = det(d, ydiff) / div
+        def angle(point):
+            x, y = point
+            return math.atan2(y, x)
 
-            if x < 0 or y < 0:  # if intersection point is negative
-                raise Exception(f'{bcolors.FAIL}Intersection point is negative, check your input lines.{bcolors.ENDC}')
+        intersections = []
+        for i in range(4):
+            for j in range(i + 1, 4):
+                point = intersection(lines[i], lines[j])
+                if point:
+                    intersections.append(point)
 
-            return int(x), int(y)
+        # Shifting the origin to the minimum point for correct angle calculation
+        min_point = min(intersections, key=lambda p: (p[1], p[0]))
+        intersections = [(p[0] - min_point[0], p[1] - min_point[1]) for p in intersections]
 
-        # Sort lines by y-coordinate of p1 (smallest first)
-        lines.sort(key=lambda line: line[0][1])
-        # either leftLine-top | topLine-both | rightLine-top
-        # start with topLine -> p2-y of leftLine|rightLine is bigger than p2-y of topLine
-        first_three = list(enumerate(lines[:3]))
-        # find index of smallest p2-y
-        three_index, small_yP2_line = min(first_three, key=lambda index_linie: index_linie[1][1][1])
-        top_line = lines.pop(three_index)
+        # Sorting intersections based on their angle
+        intersections.sort(key=angle)
 
+        # Shifting back the origin and cast to int
+        intersections = [(int(p[0] + min_point[0]), int(p[1] + min_point[1])) for p in intersections]
 
-        # Sort remaining lines by x-coordinate of p1 (largest first)
-        lines.sort(key=lambda line: line[0][0], reverse=True)
-        # either rightLine-both | bottomLine-right
-        # continue with rightLine -> p2-x of bottomLine is smaller than p2-x of rightLine
-        pop_index = 0 if lines[0][1][0] > lines[1][1][0] else 1
-        right_line = lines.pop(pop_index)
-
-        # Sort remaining lines by y-coordinate of p1 (largest first)
-        lines.sort(key=lambda line: line[0][1], reverse=True)
-        # either bottomLine-both | leftLine-bottom
-        # continue with bottomLine -> p2-y > leftline-p2-y
-        last_pop_index = 0 if lines[0][1][1] > lines[1][1][1] else 1
-        bottom_line = lines.pop(last_pop_index)
-
-        # The last line is the remaining one
-        last_line = lines[0]
-
-        l_arr = [top_line, right_line, bottom_line, last_line]
-
-        p1,p2,p3,p4 = line_intersection(l_arr[0], l_arr[1]), line_intersection(l_arr[1], l_arr[2]), line_intersection(l_arr[2], l_arr[3]), line_intersection(l_arr[3], l_arr[0])
-
-        # order Points from top left clockwise
-        edge_cords = [p1,p2,p3,p4]
-        edge_cords.sort(key=lambda point: point[1])
-        top_points = sorted(edge_cords[:2])
-        bottom_points = sorted(edge_cords[2:], reverse=True)
-        points = top_points + bottom_points
-
-        return points
+        return intersections
 
     def get_biggest(self, lineArray):
         def length(line):
