@@ -11,7 +11,6 @@ class TransparentImageOverlay:
         self.top_image_path = top_image_path
 
         self.transformPoints = []
-        self.crossToleranz = 150
         self.perimterToleranz = 0.05
 
 
@@ -21,7 +20,7 @@ class TransparentImageOverlay:
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
 
         # Calculate 4-Point transformation
-        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='float32')
+        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='uint8')
 
         for x in self.transformPoints:
             print(x)
@@ -62,7 +61,6 @@ class TransparentImageOverlay:
         print(f"...blending layer")
         return self.overlay(transformed_screen, bg)
 
-
     def getScreenPoints(self, img, dir, file):
         print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
         # Convert the image to HSV color space
@@ -75,6 +73,7 @@ class TransparentImageOverlay:
         # Threshold the image to get only green pixels with high intensity
         mask = cv2.inRange(hsv, lower_green, upper_green)
         mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)[1]
+        #cv2.imwrite(dir+".temp/"+file+"-mask.png", mask)
 
         # Apply the mask to the input image
         green_image = cv2.bitwise_and(img, img, mask=mask)
@@ -82,210 +81,67 @@ class TransparentImageOverlay:
         # Convert the masked image to grayscale, blur it, and find edges
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(gray, 75, 200)
-        #cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
+        edged = cv2.Canny(gray, 50, 150)
 
-        print("...approximate contours")
-        # aproximate Points from contour lines
-        contours, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        lines = np.array(self.contour_to_lines(contours))
+        dilated = cv2.dilate(edged, None)
+        cv2.imwrite(dir+".temp/"+file+"-contour.png", dilated)
 
-        if len(lines) < 1:
-            raise Exception(f"{bcolors.FAIL}Could not find any contours{bcolors.ENDC}")
+        # Huff-Transformation Huff-Lines
+
+        lines = cv2.HoughLines(
+            image=dilated,
+            rho= 0.01,   # max_pixel_to_line_distance
+            theta= np.pi / 180, # degree_tolerancee
+            threshold= 50  # min_weights_threshold
+        )
+
+        if lines is None:
+            raise Exception("Could not find any Lines with Hugh-Transform")
 
         demoImage = img.copy()
-        for line in lines:
-            point, p2 = line
-            cv2.circle(demoImage, point, 5, (255, 0, 0, 255), -1)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+        # Draw Lines
+        for rho, theta in lines[:, 0]:
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(demoImage, (x1, y1), (x2, y2), (0, 0, 255,255), 3)
 
-        # calculate only collinear lines from all lines
-        print("...generate collinear lines from contours")
-        collinear_lines = self.find_collinear_lines(lines)
+        cv2.imwrite(dir+".temp/"+file+"-all-lines.png", demoImage)
 
-        for line in collinear_lines:
-            p1, p2 = line
-            cv2.line(demoImage, p1, p2, (0, 0, 150, 255), 5)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+        def line_intersection(line1, line2):
+            rho1, theta1 = line1[0]
+            rho2, theta2 = line2[0]
+            if np.isclose(theta1, theta2):  # the lines are parallel
+                return None
+            A = np.array([
+                [np.cos(theta1), np.sin(theta1)],
+                [np.cos(theta2), np.sin(theta2)]
+            ])
+            b = np.array([[rho1], [rho2]])
+            x0, y0 = np.linalg.solve(A, b)
+            x0, y0 = int(np.round(x0)), int(np.round(y0))
 
-        if len(collinear_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find screen border from collinear lines{bcolors.ENDC}")
+            return [x0, y0]
 
-        # get four biggest lines from array
-        print("...calculate line interception")
+        intersections = []
+        for i, line1 in enumerate(lines):
+            for line2 in lines[i + 1:]:
+                intersection = line_intersection(line1, line2)
+                if intersection is not None and intersection[0] > 0 and intersection[1] > 0:
+                    intersections.append(intersection)
 
-        border_lines = self.get_biggest(collinear_lines)
+        print(intersections)
 
-        if len(border_lines) > 1:
-            for lineF in border_lines:
-                p1, p2 = lineF
-                cv2.circle(demoImage, p1, 20, (255, 255, 255, 255), 3)
-                cv2.circle(demoImage, p2, 20, (255, 255, 255, 255), 3)
-                cv2.line(demoImage, p1, p2, (0, 0, 255, 255), 3)
-
-            cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
-
-        if len(border_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find any screen{bcolors.ENDC}")
-
-        # calculate intersection points from four lines
-        screen_coordinates = self.get_line_intersection(border_lines)
-
-        if len(screen_coordinates) > 1:
-            for pt in screen_coordinates:
-                cv2.circle(demoImage, pt, 10, (0, 0, 255, 255), 8)
-            cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
-
-        if len(screen_coordinates) != 4:
+        if len(intersections) != 4:
             raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
 
         # draw Demo Image
-        return screen_coordinates
-
-    def contour_to_lines(self, contours):
-        # Iterate over the contours and find the rectangle with rounded corners
-        lines = []
-
-        for cnt in contours:
-            # Approximate the contour with a polygon
-            perimeter = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, self.perimterToleranz * perimeter, True)
-#
-            # Check if the polygon has four sides
-            if len(approx) == 4:
-                print(f"{bcolors.OKGREEN}Screen-contour found on mockup{bcolors.ENDC}")
-
-                # Reduce Point count for better results
-                for ix, val in enumerate(cnt):
-                    if ix >= len(cnt) - 1:
-                        break
-
-                    current_point = cnt[ix][0]
-                    next_point = cnt[ix+1][0]
-
-                    lines.append((current_point, next_point))
-                break
-
-
-        return lines
-
-    def line_to_vector(self, l1, normalize=False):
-        vector = (
-            l1[1][0] - l1[0][0],
-            l1[1][1] - l1[0][1]
-        )
-
-        if normalize:
-            magnitude = math.sqrt(sum(component**2 for component in vector))
-            return tuple(component/magnitude for component in vector)
-
-        return vector
-
-    def find_collinear_lines(self, lineArr):
-
-        def cross_product(v1, v2):
-            crossProduct = (v1[0] * v2[1]) - (v1[1] * v2[0])
-            return abs(crossProduct)
-
-        edges = []
-
-        line_builder = ()
-        last_crossProduct = 0
-
-        for ix, line in enumerate(lineArr):
-            if ix >= len(lineArr) - 1:
-                break
-
-            current_line = line
-            next_line = lineArr[ix+1]
-
-            emptyLine = len(line_builder) < 1
-
-            # Make Vektors from Line Segments
-            if emptyLine:
-                v1, v2 = self.line_to_vector(current_line), self.line_to_vector(next_line)
-            else:
-                v1, v2 = self.line_to_vector(line_builder), self.line_to_vector(next_line)
-
-            crossProduct = cross_product(v1, v2)
-            crossDifference = abs(crossProduct - last_crossProduct)
-            last_crossProduct = crossProduct
-
-            if crossDifference < self.crossToleranz:
-                # cross Product is small
-                if emptyLine:
-                    # start new Line segment
-                    line_builder = (current_line[0], next_line[1])
-                else:
-                    # add line end to segment
-                    line_builder = (line_builder[0], next_line[1])
-            else:
-                # cross Product is > 0
-                if not emptyLine:
-                    # previous line was collinear, but this one isn't anymore
-                    edges.append(line_builder)
-                    line_builder = ()
-
-        return edges
-
-    def get_line_intersection(self, lines):
-        def line_equation(line):
-            (x1, y1), (x2, y2) = line
-            m = (y2 - y1) / (x2 - x1) if x1 != x2 else float('inf')
-            b = y1 - m * x1
-            return m, b
-
-        def intersection(line1, line2):
-            m1, b1 = line_equation(line1)
-            m2, b2 = line_equation(line2)
-            if m1 == m2:  # Parallel lines, no intersection
-                return None
-            if m1 == float('inf'):  # Line1 is vertical
-                x = line1[0][0]
-                y = m2 * x + b2
-            elif m2 == float('inf'):  # Line2 is vertical
-                x = line2[0][0]
-                y = m1 * x + b1
-            else:
-                x = (b2 - b1) / (m1 - m2)
-                y = m1 * x + b1
-
-            # Only return the point if it's within the desired range
-            if 0 <= x <= 5000 and 0 <= y <= 5000:
-                return x, y
-            else:
-                return None
-        def angle(point):
-            x, y = point
-            return math.atan2(y, x)
-
-        def distance_to_origin(point):
-            x, y = point
-            return math.sqrt(x ** 2 + y ** 2)
-
-        intersections = []
-        for i in range(4):
-            for j in range(i + 1, 4):
-                point = intersection(lines[i], lines[j])
-                if point is not None:
-                    intersections.append(point)
-
-        intersections = sorted(intersections, key=distance_to_origin)[:4]
-        origin_min_distance_point = min(intersections, key=distance_to_origin)
-        intersections = sorted(intersections, key=angle)
-        intersections.remove(origin_min_distance_point)
-        intersections = [origin_min_distance_point] + intersections
-
-        return [(int(x), int(y)) for x, y in intersections]
-
-    def get_biggest(self, lineArray):
-        def length(line):
-            (x1, y1), (x2, y2) = line
-            return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
-
-        lineArray.sort(key=length, reverse=True)
-        bigger = lineArray[:4]
-        return bigger
+        return intersections
 
 
     def process_green_pixels(self, input_image):
