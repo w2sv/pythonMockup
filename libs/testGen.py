@@ -3,14 +3,22 @@ import numpy as np
 
 class generateTestSquare:
 
-    outputPath = "output/test/"
+    def __init__(self, count, path = "output/test/"):
+        self.outputPath = path
+        self.count = count
 
-    def __init__(self, count):
+    def test_run(self):
+        img_arr = []
+        for x in range(self.count):
+            newTestImage = self.generateDemoCanny(np.random.randint(1500, 3000), np.random.randint(1500,3000))
+            #cv2.imwrite(f"{self.outputPath}{x}.png", newTestImage)
 
-        for x in range(count):
-            newRectangle = self.generateDemoCanny(np.random.randint(1500, 3000), np.random.randint(1500,3000))
-            cv2.imwrite(f"{self.outputPath}src/{x}.png", newRectangle)
+            img_arr.append({
+                "canny":cv2.cvtColor(newTestImage, cv2.COLOR_BGR2GRAY),
+                "original":newTestImage
+            })
 
+        return img_arr
 
     def generateDemoCanny(self, width, height):
         # Create a black background image
@@ -48,7 +56,7 @@ class generateTestSquare:
 
     def overlay(self, image1, image2):
         for c in range(0, 3):
-            image2[:, :, c] = (image1[:, :, c] + image2[:, :, c]) // 2
+            image2[:, :, c] = (image1[:, :, c] + image2[:, :, c])
 
         return image2
 
@@ -76,7 +84,7 @@ class generateTestSquare:
 
         # Create black backdrop
         screen_contour = np.zeros((rect_height, rect_width, 3), dtype=np.uint8)
-        screen_contour[:, :, 2] = 150
+        #screen_contour[:, :, 2] = 150
 
         thickness = 5
         b = thickness+1  # border

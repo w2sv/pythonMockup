@@ -20,10 +20,14 @@ class TransparentImageOverlay:
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
 
         # Calculate 4-Point transformation
-        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='uint8')
+        contourImage = self.get_contour(background)
+        cv2.imwrite(dir+".temp/"+file+"-contour.png", contourImage)
 
-        for x in self.transformPoints:
-            print(x)
+        # get Huffman Lines
+        contourLines = self.get_huffman_lines(contourImage)
+
+        intersections = self.lines_to_intersection(contourLines)
+        self.transformPoints = np.array(intersections, dtype='uint8')
 
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         imageComp = self.applyLayer(background)
@@ -61,7 +65,7 @@ class TransparentImageOverlay:
         print(f"...blending layer")
         return self.overlay(transformed_screen, bg)
 
-    def getScreenPoints(self, img, dir, file):
+    def get_contour(self, img):
         print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
         # Convert the image to HSV color space
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -85,39 +89,24 @@ class TransparentImageOverlay:
         # make edge contour little bit bigger
         dilated = cv2.dilate(edged, None)
 
-        # cv2.imwrite(dir+".temp/"+file+"-contour.png", dilated)
+        return dilated
 
+    def get_huffman_lines(self, contour):
         # Huff-Transformation Huff-Lines
-
         lines = cv2.HoughLines(
-            image=dilated,
-            rho= .001,   # max_pixel_to_line_distance
-            theta= np.pi / 180, # 5*360 steps
-            threshold=25  # min_weights_threshold
+            image=contour,
+            rho=.1,  # max_pixel_to_line_distance
+            theta=np.pi / 180,  # 5*360 steps
+            threshold= 150  # min_weights_threshold
         )
+
+        return lines
+
+    def lines_to_intersection(self, lines):
 
         if lines is None:
             raise Exception("Could not find any Lines with Hugh-Transform")
 
-        demoImage = img.copy()
-        # Draw Lines
-        for rho, theta in lines[:, 0]:
-            a = np.cos(theta)
-            b = np.sin(theta)
-            x0 = a * rho
-            y0 = b * rho
-            x1 = int(x0 + 1000 * (-b))
-            y1 = int(y0 + 1000 * (a))
-            x2 = int(x0 - 1000 * (-b))
-            y2 = int(y0 - 1000 * (a))
-            cv2.line(demoImage, (x1, y1), (x2, y2), (0, 0, 255,255), 2)
-
-        name = dir+".temp/"+file+"-all-lines"
-        while os.path.isfile(name+".png"):
-            name+= "-new"
-        cv2.imwrite(name+".png", demoImage)
-
-        exit()
         def line_intersection(line1, line2):
             rho1, theta1 = line1[0]
             rho2, theta2 = line2[0]
@@ -140,14 +129,11 @@ class TransparentImageOverlay:
                 if intersection is not None and intersection[0] > 0 and intersection[1] > 0:
                     intersections.append(intersection)
 
-        print(intersections)
-
         if len(intersections) != 4:
             raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
 
         # draw Demo Image
         return intersections
-
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
