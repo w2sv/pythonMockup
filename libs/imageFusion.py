@@ -81,18 +81,19 @@ class TransparentImageOverlay:
         # Convert the masked image to grayscale, blur it, and find edges
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(gray, 50, 150)
-
+        edged = cv2.Canny(gray, 50, 150, apertureSize=3)
+        # make edge contour little bit bigger
         dilated = cv2.dilate(edged, None)
-        cv2.imwrite(dir+".temp/"+file+"-contour.png", dilated)
+
+        # cv2.imwrite(dir+".temp/"+file+"-contour.png", dilated)
 
         # Huff-Transformation Huff-Lines
 
         lines = cv2.HoughLines(
             image=dilated,
-            rho= 0.01,   # max_pixel_to_line_distance
-            theta= np.pi / 180, # degree_tolerancee
-            threshold= 50  # min_weights_threshold
+            rho= .001,   # max_pixel_to_line_distance
+            theta= np.pi / 180, # 5*360 steps
+            threshold=25  # min_weights_threshold
         )
 
         if lines is None:
@@ -109,10 +110,14 @@ class TransparentImageOverlay:
             y1 = int(y0 + 1000 * (a))
             x2 = int(x0 - 1000 * (-b))
             y2 = int(y0 - 1000 * (a))
-            cv2.line(demoImage, (x1, y1), (x2, y2), (0, 0, 255,255), 3)
+            cv2.line(demoImage, (x1, y1), (x2, y2), (0, 0, 255,255), 2)
 
-        cv2.imwrite(dir+".temp/"+file+"-all-lines.png", demoImage)
+        name = dir+".temp/"+file+"-all-lines"
+        while os.path.isfile(name+".png"):
+            name+= "-new"
+        cv2.imwrite(name+".png", demoImage)
 
+        exit()
         def line_intersection(line1, line2):
             rho1, theta1 = line1[0]
             rho2, theta2 = line2[0]
