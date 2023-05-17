@@ -285,15 +285,77 @@ class TransparentImageOverlay:
             else:
 =======
     def get_huffman_lines(self, contour):
-        # Huff-Transformation Huff-Lines
-        lines = cv2.HoughLines(
+        # Huff-Transformation Huff-Lines in polar form
+        return cv2.HoughLines(
             image=contour,
-            rho=.1,  # max_pixel_to_line_distance
+            rho=1,  # max_pixel_to_line_distance
             theta=np.pi / 180,  # 5*360 steps
-            threshold= 150  # min_weights_threshold
+            threshold=150  # min_weights_threshold
         )
 
-        return lines
+    def get_huffman_pointLines(self, contour):
+        # Huff-Transformation Huff-Lines in Point (X, Y) form
+        def line_length(line):
+            x1, y1, x2, y2 = line[0]
+            return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+
+        h, w = contour.shape[:2]
+        min_line_length = min([w, h]) // 4
+
+        lines = cv2.HoughLinesP(
+            image=contour,
+            rho= 1,
+            theta= np.pi / 720,
+            threshold= 5,
+            minLineLength=min_line_length,
+            maxLineGap=None
+        )
+
+        return lines, self.combine_overlapping_lines(lines)
+
+    import numpy as np
+
+    def combine_overlapping_lines(self, lines):
+        # Convert lines to polar coordinates (r, theta)
+        group_count = 100
+        theta_faktor = 1080
+
+        while group_count > 4:
+            polar_lines = {}
+
+            for line in lines:
+                x1, y1, x2, y2 = line[0]
+
+                # Convert Cartesian coordinates to polar coordinates
+                r = np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
+                theta = np.arctan2(y2 - y1, x2 - x1)
+
+                # check if theta is within range group
+                index = round(theta * theta_faktor)
+                if index not in polar_lines :
+                    polar_lines[index] = [line]
+                else:
+                    polar_lines[index].append(line)
+
+            sortedList = sorted(polar_lines.values(), key=lambda x: len(x), reverse=True)
+            group_count = len(sortedList)
+            theta_faktor = theta_faktor - 1
+
+            if theta_faktor < 100:
+                break
+
+        print(f"found {group_count} different angles this time with faktor {theta_faktor}")
+
+        return [item[0] for item in sortedList]
+
+
+    def polar_to_cart(self, line):
+        r, theta = line
+        x1 = r * np.cos(theta)
+        y1 = r * np.sin(theta)
+        x2 = x1 + 1000 * np.cos(theta + np.pi / 2)
+        y2 = y1 + 1000 * np.sin(theta + np.pi / 2)
+        return int(x1), int(y1), int(x2), int(y2)
 
     def lines_to_intersection(self, lines):
 

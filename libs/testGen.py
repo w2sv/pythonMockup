@@ -10,12 +10,12 @@ class generateTestSquare:
     def test_run(self):
         img_arr = []
         for x in range(self.count):
-            newTestImage = self.generateDemoCanny(np.random.randint(1500, 3000), np.random.randint(1500,3000))
+            contour, reference = self.generateDemoCanny(np.random.randint(1500, 3000), np.random.randint(1500,3000))
             #cv2.imwrite(f"{self.outputPath}{x}.png", newTestImage)
 
             img_arr.append({
-                "canny":cv2.cvtColor(newTestImage, cv2.COLOR_BGR2GRAY),
-                "original":newTestImage
+                "canny": contour,
+                "original": reference
             })
 
         return img_arr
@@ -23,6 +23,7 @@ class generateTestSquare:
     def generateDemoCanny(self, width, height):
         # Create a black background image
         image = np.zeros((height, width, 3), dtype=np.uint8)
+        white_ref = np.ones((height, width, 3), dtype=np.uint8) * 155
 
         r_pos, r_size, r_contour = self.create_round_rectangle(width, height)
 
@@ -40,7 +41,10 @@ class generateTestSquare:
 
         transform_screen = self.fourWayTransform(r_contour, (width, height), transform_coordinates)
 
-        return self.overlay(image, transform_screen)
+        canny = cv2.cvtColor(self.overlay(image, transform_screen), cv2.COLOR_BGR2GRAY)
+        reference = self.overlay(white_ref, transform_screen)
+
+        return canny, reference
 
     def fourWayTransform(self, screen, bg_size, fourPointDst):
         # Define the four corner points in the source image
