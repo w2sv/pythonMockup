@@ -118,42 +118,95 @@ class TransparentImageOverlay:
             maxLineGap=None
         )
 
-        return lines, self.combine_overlapping_lines(lines)
+        return lines, self.combine_overlapping_lines(lines, (w,h))
 
     import numpy as np
 
-    def combine_overlapping_lines(self, lines):
+    def combine_overlapping_lines(self, lines, size):
         # Convert lines to polar coordinates (r, theta)
-        group_count = 100
-        theta_faktor = 1080
+        w, h = size
 
-        while group_count > 4:
-            polar_lines = {}
+        lineSkew = 10
+        lineOffset = 10
 
-            for line in lines:
-                x1, y1, x2, y2 = line[0]
+        vertical_line = (int(w/2) - lineSkew, lineOffset, int(w/2) + lineSkew, h-lineOffset)
+        horizontal_line = (lineOffset, int(h/2) - lineSkew, w-lineOffset, int(h/2) + lineSkew)
 
-                # Convert Cartesian coordinates to polar coordinates
-                r = np.sqrt((y2 - y1) ** 2 + (x2 - x1) ** 2)
-                theta = np.arctan2(y2 - y1, x2 - x1)
+        horizontal = {
+            "list": [],
+            "ref_line": self.cart_to_polar(horizontal_line)     # horizontal line in center
+        }
+        vertical = {
+            "list": [],
+            "ref_line": self.cart_to_polar(vertical_line)     # vertical line in center
+        }
 
-                # check if theta is within range group
-                index = round(theta * theta_faktor)
-                if index not in polar_lines :
-                    polar_lines[index] = [line]
-                else:
-                    polar_lines[index].append(line)
+        for line in lines:
+            # Convert Cartesian coordinates to polar coordinates
+            r, theta = self.cart_to_polar(line[0])
+            degree = abs((theta / (2 * np.pi)) * 360) % 360
 
-            sortedList = sorted(polar_lines.values(), key=lambda x: len(x), reverse=True)
-            group_count = len(sortedList)
-            theta_faktor = theta_faktor - 1
+            if 0 < degree < 45 or 135 < degree < 225:
+                # Horizontal line
+                # calculate Y-Value for Intersection with vertical |
+                h_ref_r, h_ref_theta = vertical.get("ref_line")
+                h_check_line_group = [
+                    ((float(h_ref_r), float(h_ref_theta)),),
+                    ((float(r), float(theta)),)
+                ]
+                h_calc_intersection = self.lines_to_intersection(h_check_line_group)
+                if len(h_calc_intersection) == 1:
+                    h_entry = (h_calc_intersection[0][1], line)
+                    horizontal.get("list").append(h_entry)
 
-            if theta_faktor < 100:
-                break
+            else:
+                # Vertical Line
+                # calculate X-Value for intersection with horizontal -
+                v_ref_r, v_ref_theta = horizontal.get("ref_line")
+                v_check_line_group = [
+                    ((float(v_ref_r), float(v_ref_theta)),),
+                    ((float(r), float(theta)),)
+                ]
+                v_calc_intersection = self.lines_to_intersection(v_check_line_group)
+                if len(v_calc_intersection) == 1:
+                    v_entry = (v_calc_intersection[0][0], line)
+                    vertical.get("list").append(v_entry)
 
-        print(f"found {group_count} different angles this time with faktor {theta_faktor}")
 
-        return [item[0] for item in sortedList]
+
+        # Filter Max / Min for vertical and horizontal
+        horizontal_lines = horizontal.get("list")
+        h_list = sorted(horizontal_lines, key=lambda g: g[0])
+        # Filter Max / Min for vertical and horizontal
+        vertical_lines = vertical.get("list")
+        v_list = sorted(vertical_lines, key=lambda g: g[0])
+
+        print(f"found x{len(h_list)} and y{len(v_list)}")
+
+        if len(h_list) < 2 or len(v_list) < 2:
+            raise Exception("Not enough Lines found")
+
+        for h in h_list:
+            print(f"Horizontal intersection: Y:{h[0]} with line {h[1]}")
+
+        for v in v_list:
+            print(f"Vertical intersection: Y:{v[0]} with line {v[1]}")
+
+
+        collected = [
+            h_list[0][1],
+            v_list[0][1],
+            h_list[-1][1],
+            v_list[-1][1]
+        ]
+
+        check_lines = [
+            (horizontal_line,),
+            (vertical_line,),
+        ]
+        collected += check_lines
+
+        return collected
 
 
     def polar_to_cart(self, line):
@@ -163,6 +216,18 @@ class TransparentImageOverlay:
         x2 = x1 + 1000 * np.cos(theta + np.pi / 2)
         y2 = y1 + 1000 * np.sin(theta + np.pi / 2)
         return int(x1), int(y1), int(x2), int(y2)
+
+
+    def cart_to_polar(self, line):
+        x1, y1, x2, y2 = line
+
+        dx = int(x2 - x1)
+        dy = int(y2 - y1)
+
+        r = np.sqrt(dx ** 2 + dy ** 2)
+        theta = math.atan2(dy, dx)
+
+        return r, theta
 
     def lines_to_intersection(self, lines):
 
@@ -190,9 +255,6 @@ class TransparentImageOverlay:
                 intersection = line_intersection(line1, line2)
                 if intersection is not None and intersection[0] > 0 and intersection[1] > 0:
                     intersections.append(intersection)
-
-        if len(intersections) != 4:
-            raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
 
         # draw Demo Image
         return intersections

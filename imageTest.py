@@ -8,7 +8,7 @@ from libs.imageFusion import TransparentImageOverlay
 
 
 # set image creation runs
-count = 50
+count = 5
 
 # Create test folder
 myPath = f"output/test/run-X{count}-V"
@@ -40,8 +40,6 @@ images = testEngine.test_run()
 print(f"Generating {count} images...")
 imageAnalyzer = TransparentImageOverlay("", "")
 print("...successfull")
-
-successCount = 0
 
 def hughLineCheck(contour, background):
     lines = imageAnalyzer.get_huffman_lines(contour)
@@ -80,27 +78,34 @@ def hughPointLinecheck(contour, background):
             cv2.circle(background, (x2,y2), 15, blue_c, 3)
     else:
         print("PointCheck: No contour was found on the image")
-        return
+        return False
 
     cv2.imwrite(folder + f"{x}-coord.png", background)
 
 
     if mapped_lines is not None:
-        print(f"PointCheck: found {len(mapped_background)} lines in Image")
+        mapped_count = len(mapped_lines)
+        print(f"PointCheck: mapped to {mapped_count} lines in Image")
 
         for line in mapped_lines:
             x1, y1, x2, y2 = line[0]
             cv2.line(mapped_background, (x1, y1), (x2, y2), red_c, 3)
             cv2.circle(mapped_background, (x1,y1), 15, red_c, 3)
             cv2.circle(mapped_background, (x2,y2), 15, red_c, 3)
+
+        cv2.imwrite(folder + f"{x}-mapped.png", mapped_background)
+        print("PointCheck: Saved report image")
+
+        if mapped_count == 4:
+            return True
+
     else:
         print("PointCheck: No contour was found on the image")
-        return
-
-    cv2.imwrite(folder + f"{x}-mapped.png", mapped_background)
-    print("PointCheck: Saved report image")
+        return False
 
 
+
+successCount = 0
 for (x,data) in enumerate(images):
     # try to find solution
     print(f"\nAnalyze image {x + 1}/{count}")
@@ -109,4 +114,7 @@ for (x,data) in enumerate(images):
     bg = data.get("original")
 
     #hughLineCheck(canny, bg.copy())
-    hughPointLinecheck(canny, bg)
+    if hughPointLinecheck(canny, bg):
+        successCount += 1
+
+print(f"\n\nAnalysed with Rate of {successCount} / {count}")
