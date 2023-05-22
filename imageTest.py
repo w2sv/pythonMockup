@@ -1,7 +1,6 @@
 import os
 
 import cv2
-import numpy as np
 
 from libs.bColor import bcolors
 from libs.testGen import generateTestSquare
@@ -9,7 +8,7 @@ from libs.imageFusion import TransparentImageOverlay
 
 
 # set image creation runs
-count = 100
+count = 10
 
 # Create test folder
 myPath = f"output/test/run-X{count}-V"

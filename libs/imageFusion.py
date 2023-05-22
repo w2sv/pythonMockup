@@ -47,10 +47,9 @@ class TransparentImageOverlay:
         # debug Image
         if debug:
             all_lines_img = background.copy()
-            print_lines(mapped_x, all_lines_img, (0,255,0, 255))
+            print_lines(mapped_x, all_lines_img, (255,0,0, 255))
             print_lines(mapped_y, all_lines_img, (255,0,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-2-huffmanLines.png", all_lines_img)
-
 
         sorted_y_intersect, vert_line = self.get_relevant_lines(mapped_x, True)
         sorted_x_intersect, hori_line = self.get_relevant_lines(mapped_y, False)
@@ -64,8 +63,8 @@ class TransparentImageOverlay:
 
         if debug:
             all_intersection_img = background.copy()
-            print_dots(x_points, all_intersection_img, (0,255,0, 255))
-            print_lines([(hori_line,)], all_intersection_img, (0,255,0, 255))
+            print_dots(x_points, all_intersection_img, (255,0,0, 255))
+            print_lines([(hori_line,)], all_intersection_img, (255,0,0, 255))
             print_dots(y_points, all_intersection_img, (255,0,255, 255))
             print_lines([(vert_line,)], all_intersection_img,  (255,0,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-3-lineCalculation.png", all_intersection_img)
@@ -80,20 +79,17 @@ class TransparentImageOverlay:
             print_dots(intersections, edged_img, (255,255,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-4-finalPoints.png", edged_img)
 
-
-        self.transformPoints = np.array(intersections, dtype='uint8')
-
+        self.transformPoints = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
-        imageComp = self.applyLayer(background, True)
+        image_comp = self.applyLayer(background, True)
 
         # Save the new image
-        cv2.imwrite(folder+file+".png", imageComp)
+        cv2.imwrite(folder+file+".png", image_comp)
 
         if keepScreenshot is False:
             self.removeScreenshotTemp()
 
     def applyLayer(self, bg, easy_mode=False):
-
         # Oeffne Screenshot
         if not os.path.isfile(self.top_image_path):
             raise Exception(f"{bcolors.FAIL}Could not find screenshot file on drive.{bcolors.ENDC}")
@@ -201,13 +197,13 @@ class TransparentImageOverlay:
             # calculate difference to prev degree
             change = abs(curr_line_degree - last_degree)
             change_degree_assoc.append(change)
-            print(f"{curr_line_degree}°", change)
+            # print(f"{curr_line_degree}°", change)
             last_degree = curr_line_degree
 
         # get Index, where to split between horizontal, vertical
         max_value = max(change_degree_assoc, key=lambda x: x)
         indices = [index for index, item in enumerate(change_degree_assoc) if item == max_value]
-        print(f"Max change rate= {max_value} as Position {indices}")
+        print(f"Split Vertical to Horizontal at index {indices} after delta degree {max_value}")
 
         split_index = indices[0] +1
         group_one = sorted_degree_lines[:split_index] if first_line_horizontal else sorted_degree_lines[split_index:]
@@ -247,17 +243,6 @@ class TransparentImageOverlay:
 
         # return just first and last line
         # return sorted_data[0][1], sorted_data[-1][1]
-
-    def cart_to_polar(self, line):
-        x1, y1, x2, y2 = line
-
-        dx = int(x2 - x1)
-        dy = int(y2 - y1)
-
-        r = np.sqrt(dx ** 2 + dy ** 2)
-        theta = math.atan2(dy, dx)
-
-        return r, theta
 
     def line_intersection(self, line1, line2):
         scaling_factor = max(*self.size)
@@ -299,7 +284,6 @@ class TransparentImageOverlay:
 
             # print(f"check {curr_line} with {next_line}")
             intersect = self.line_intersection(curr_line, next_line)
-            print(intersect)
 
             if intersect is not None:
                 intersection_points.append(intersect)
@@ -307,9 +291,32 @@ class TransparentImageOverlay:
                 return None
 
         if len(intersection_points) == 4:
-            return intersection_points
+            # sort points in right order
+            sorted_intersects = self.sort_points_clockwise(intersection_points)
+            print(sorted_intersects)
+            return sorted_intersects
         else:
             return None
+    def sort_points_clockwise(self, points):
+        # Function to calculate the Euclidean distance from a point to the origin
+        def distance_to_origin(point):
+            return math.sqrt(point[0] ** 2 + point[1] ** 2)
+
+        # Function to calculate the angle a point forms with the positive x-axis
+        def angle_to_x_axis(point):
+            return math.atan2(-point[1], point[0])
+
+        # Find the point closest to the origin
+        start_point = min(points, key=distance_to_origin)
+
+        # Sort the points in clockwise order, starting with the start_point
+        sorted_points = sorted(points, key=angle_to_x_axis, reverse=True)
+
+        # Make sure the start_point is first in the sorted list
+        sorted_points.remove(start_point)
+        sorted_points.insert(0, start_point)
+
+        return sorted_points
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
@@ -376,6 +383,7 @@ class TransparentImageOverlay:
             [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],
             dtype=np.float32)
 
+        print(self.transformPoints)
         h, status = cv2.findHomography(pts_src, self.transformPoints)
         out = cv2.warpPerspective(screenshot, h, self.size)
 
