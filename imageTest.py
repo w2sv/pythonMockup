@@ -3,12 +3,13 @@ import os
 import cv2
 import numpy as np
 
+from libs.bColor import bcolors
 from libs.testGen import generateTestSquare
 from libs.imageFusion import TransparentImageOverlay
 
 
 # set image creation runs
-count = 5
+count = 15
 
 # Create test folder
 myPath = f"output/test/run-X{count}-V"
@@ -29,9 +30,7 @@ while True:
     prefixNbr = prefixNbr + 1
     folder = myPath+f"{prefixNbr}/"
 
-
 print("created folder", folder)
-
 
 # generate random transformed rectangles for test purposes
 testEngine = generateTestSquare(count, folder)
@@ -63,45 +62,86 @@ red_c = (0,0,255)
 
 
 def hughPointLinecheck(contour, background):
-    cv2.imwrite(folder + f"{x}-canny.png", contour)
+    cv2.imwrite(folder + f"{x}-1-canny.png", contour)
 
-    lines, mapped_lines = imageAnalyzer.get_huffman_pointLines(contour)
+    lines = imageAnalyzer.get_huffman_pointLines(contour)
+    mapped_lines_x, mapped_lines_y = imageAnalyzer.combine_overlapping_lines(lines)
+
     mapped_background = background.copy()
+    final_border = background.copy()
+    def print_lines(lines_data, image, color=blue_c):
+        if lines_data is not None:
+            for lin in lines_data:
+                x1, y1, x2, y2 = lin[0]
+                cv2.line(image, (x1, y1), (x2, y2), color, 3)
+                cv2.circle(image, (x1, y1), 15, color, 3)
+                cv2.circle(image, (x2, y2), 15, color, 3)
+
+    def print_dots(dot_data, image, color=blue_c):
+        if dot_data is not None:
+            for dot in dot_data:
+                x, y, = dot
+                cv2.circle(image, (x, y), 15, color, 3)
 
     if lines is not None:
         print(f"PointCheck: found {len(lines)} lines in Image")
-
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(background, (x1, y1), (x2, y2), blue_c, 3)
-            cv2.circle(background, (x1,y1), 15, blue_c, 3)
-            cv2.circle(background, (x2,y2), 15, blue_c, 3)
+        print_lines(lines, background)
     else:
         print("PointCheck: No contour was found on the image")
         return False
 
-    cv2.imwrite(folder + f"{x}-coord.png", background)
+    cv2.imwrite(folder + f"{x}-2-coord.png", background)
 
+    if mapped_lines_x is not None:
+        mapped_count = len(mapped_lines_x)
+        #print(f"PointCheck: mapped to {mapped_count} horizontal lines in Image")
+        print_lines(mapped_lines_x, mapped_background)
 
-    if mapped_lines is not None:
-        mapped_count = len(mapped_lines)
-        print(f"PointCheck: mapped to {mapped_count} lines in Image")
+    if mapped_lines_y is not None:
+        mapped_count = len(mapped_lines_y)
+        #print(f"PointCheck: mapped to {mapped_count} vertical lines in Image")
+        print_lines(mapped_lines_y, mapped_background, red_c)
 
-        for line in mapped_lines:
-            x1, y1, x2, y2 = line[0]
-            cv2.line(mapped_background, (x1, y1), (x2, y2), red_c, 3)
-            cv2.circle(mapped_background, (x1,y1), 15, red_c, 3)
-            cv2.circle(mapped_background, (x2,y2), 15, red_c, 3)
-
-        cv2.imwrite(folder + f"{x}-mapped.png", mapped_background)
-        print("PointCheck: Saved report image")
-
-        if mapped_count == 4:
-            return True
-
-    else:
-        print("PointCheck: No contour was found on the image")
+    intersect_color = (255, 255, 0)
+    # Find relevant lines from vertical/horizontal mapped
+    # Sort Lines by Central Cross-Section
+    sorted_y_intersection, vert_line = imageAnalyzer.get_relevant_lines(mapped_lines_x, True)
+    if len(sorted_y_intersection) < 2:
+        #print(f"{bcolors.FAIL}Could not find any horizontal mapped lines -> abort{bcolors.ENDC}")
         return False
+    y_points, y_lines = zip(*sorted_y_intersection)
+
+    # print intersections with vertical reference line on mapped_background
+    print_dots(y_points, mapped_background, intersect_color)
+    print_lines([(vert_line,)], mapped_background, intersect_color)
+
+    sorted_x_intersection, hori_line = imageAnalyzer.get_relevant_lines(mapped_lines_y, False)
+    if len(sorted_x_intersection) < 2:
+        #print(f"{bcolors.FAIL}Could not find any vertical mapped lines -> abort{bcolors.ENDC}")
+        return False
+    x_points, x_lines = zip(*sorted_x_intersection)
+
+    # print intersections with horizontal reference line on mapped_background
+    print_dots(x_points, mapped_background, intersect_color)
+    print_lines([(hori_line,)], mapped_background, intersect_color)
+
+    cv2.imwrite(folder + f"{x}-3-mapped.png", mapped_background)
+
+    four_borders = [y_lines[0], x_lines[-1], y_lines[-1], x_lines[0]]
+    # print 4-found lines - with Intersection points
+    print_lines(four_borders, final_border)
+
+    transform_points = imageAnalyzer.get_screen_position(four_borders)
+    if transform_points is not None:
+        print_dots(transform_points, final_border, (255,255,255))
+        print(transform_points)
+    else:
+        print(f"{bcolors.FAIL}Could not find any intersections{bcolors.ENDC}")
+
+    cv2.imwrite(folder + f"{x}-4-reduced.png", final_border)
+
+    print("PointCheck: Saved report image")
+    return True
 
 
 
