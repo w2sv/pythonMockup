@@ -1,3 +1,5 @@
+import random
+
 import cv2
 import numpy as np
 
@@ -27,7 +29,7 @@ class generateTestSquare:
 
         r_pos, r_size, r_contour = self.create_round_rectangle(width, height)
 
-        if r_pos[0] % 9 == 0:
+        if r_pos[0] % 6 == 0:
             # Sometimes create a Notch onto r_contour
             n_pos, n_size, n_contour = self.create_round_rectangle(*r_size)
             r_contour[n_pos[1]:n_pos[1] + n_size[1], n_pos[0]:n_pos[0] + n_size[0]] = n_contour
@@ -66,15 +68,15 @@ class generateTestSquare:
 
     def randomTransform(self, top_left, bottom_right, max):
 
-        x1_trans, y1_trans = np.random.randint(-max, max), np.random.randint(-max, max)
-        x2_trans, y2_trans = np.random.randint(-max, max), np.random.randint(-max, max)
+        opposite_edge = bool(random.getrandbits(1))
+        x1_trans, y1_trans, x2_trans, y2_trans = np.random.randint(-max, max, size=4)
 
-        return (
-            top_left,
-            (bottom_right[0] + x1_trans, top_left[1] + y1_trans), # top_right
-            bottom_right,
-            (top_left[0] - x2_trans, bottom_right[1] - y2_trans)  # bottom_left
-        )
+        top_left = top_left if opposite_edge else (top_left[0] + x1_trans, top_left[1] + y1_trans)
+        top_right = (bottom_right[0] + x1_trans, top_left[1] + y1_trans) if opposite_edge else (bottom_right[0], top_left[1])
+        bottom_right = bottom_right if opposite_edge else (bottom_right[0] + x2_trans, bottom_right[1] + y2_trans)
+        bottom_left = (top_left[0] - x2_trans, bottom_right[1] - y2_trans) if opposite_edge else (top_left[0], bottom_right[1])
+
+        return top_left, top_right, bottom_right, bottom_left
 
     def create_round_rectangle(self, width, height):
 
