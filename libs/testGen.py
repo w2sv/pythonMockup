@@ -32,11 +32,11 @@ class generateTestSquare:
             n_pos, n_size, n_contour = self.create_round_rectangle(*r_size)
             r_contour[n_pos[1]:n_pos[1] + n_size[1], n_pos[0]:n_pos[0] + n_size[0]] = n_contour
 
-        #perspectevly move two coordinates of the screen-edge
+        # perspectevly move two coordinates of the screen-edge
         transform_coordinates = self.randomTransform(
             top_left=r_pos,
             bottom_right=(r_pos[0]+r_size[0], r_pos[1]+r_size[1]),
-            max = min(r_size) // 10
+            max = min(r_size) // 5
         )
 
         transform_screen = self.fourWayTransform(r_contour, (width, height), transform_coordinates)
@@ -50,10 +50,10 @@ class generateTestSquare:
         # Define the four corner points in the source image
         # Calculate the 4-point transformation
         pts_src = np.array([
-                        [0, 0],[screen.shape[1], 0],
-                        [screen.shape[1], screen.shape[0]],
-                        [0, screen.shape[0]]
-                    ], dtype=np.float32)
+            [0, 0],[screen.shape[1], 0],
+            [screen.shape[1], screen.shape[0]],
+            [0, screen.shape[0]]
+        ], dtype=np.float32)
 
         h, status = cv2.findHomography(pts_src, np.array([*fourPointDst], dtype=np.float32))
         return cv2.warpPerspective(screen, h, bg_size)
@@ -66,13 +66,14 @@ class generateTestSquare:
 
     def randomTransform(self, top_left, bottom_right, max):
 
-        x_trans, y_trans = np.random.randint(-max, max), np.random.randint(-max, max)
+        x1_trans, y1_trans = np.random.randint(-max, max), np.random.randint(-max, max)
+        x2_trans, y2_trans = np.random.randint(-max, max), np.random.randint(-max, max)
 
         return (
             top_left,
-            (bottom_right[0] + x_trans, top_left[1] + y_trans), # top_right
+            (bottom_right[0] + x1_trans, top_left[1] + y1_trans), # top_right
             bottom_right,
-            (top_left[0] - x_trans, bottom_right[1] - y_trans)  # bottom_left
+            (top_left[0] - x2_trans, bottom_right[1] - y2_trans)  # bottom_left
         )
 
     def create_round_rectangle(self, width, height):
