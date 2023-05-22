@@ -29,7 +29,7 @@ class PythonMockup:
             url=promterInstance.url,
             directory=newPath+".temp/",
             cookieClass=promterInstance.hideClass,
-            waitTime=30,
+            waitTime=5,
         )
 
         for x in range(len(selectedDevices)):
