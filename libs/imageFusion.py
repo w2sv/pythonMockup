@@ -9,15 +9,16 @@ class TransparentImageOverlay:
     def __init__(self, bottom_image_path, top_image_path):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
-
         self.transformPoints = []
-        self.perimterToleranz = 0.05
-
+        self.size = (0,0)
 
     def overlay_images(self, folder, file, keepScreenshot=False):
 
         # Öffne die beiden Bilder und konvertiere sie in BGRA-Modus, um Transparenz zu unterstützen
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
+
+        h, w = background.shape[:2]
+        self.size = (w, h)
 
         # Calculate 4-Point transformation
         contourImage = self.get_contour(background)
@@ -26,8 +27,8 @@ class TransparentImageOverlay:
         # get Huffman Lines
         contourLines = self.get_huffman_lines(contourImage)
 
-        intersections = self.lines_to_intersection(contourLines)
-        self.transformPoints = np.array(intersections, dtype='uint8')
+        # intersections = self.lines_to_intersection(contourLines)
+        # self.transformPoints = np.array(intersections, dtype='uint8')
 
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         imageComp = self.applyLayer(background)
@@ -39,8 +40,6 @@ class TransparentImageOverlay:
             self.removeScreenshotTemp()
 
     def applyLayer(self, bg, easy_mode=False):
-        h, w = bg.shape[:2]
-        bg_size = (w, h)
 
         # Oeffne Screenshot
         if not os.path.isfile(self.top_image_path):
@@ -51,10 +50,10 @@ class TransparentImageOverlay:
         alpha_screen, screen_glare = self.process_green_pixels(bg)
 
         # Transform and Mask Screenshot
-        transformed_screen = self.add_four_point_transform(screenshot, bg_size, alpha_screen)
+        transformed_screen = self.add_four_point_transform(screenshot, alpha_screen)
 
         if not easy_mode:
-            screen_glow = self.create_border_glow(transformed_screen, bg_size)
+            screen_glow = self.create_border_glow(transformed_screen)
 
             print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
             layer1 = self.overlay(screen_glow, bg)
@@ -92,6 +91,9 @@ class TransparentImageOverlay:
         return dilated
 
     def get_huffman_lines(self, contour):
+        h, w = contour.shape[:2]
+        self.size = (w, h)
+
         # Huff-Transformation Huff-Lines in polar form
         return cv2.HoughLines(
             image=contour,
@@ -101,7 +103,10 @@ class TransparentImageOverlay:
         )
 
     def get_huffman_pointLines(self, contour):
+        h, w = contour.shape[:2]
+        self.size = (w, h)
         # Huff-Transformation Huff-Lines in Point (X, Y) form
+
         def line_length(line):
             x1, y1, x2, y2 = line[0]
             return np.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
@@ -118,105 +123,90 @@ class TransparentImageOverlay:
             maxLineGap=None
         )
 
-        return lines, self.combine_overlapping_lines(lines, (w,h))
+        return lines
 
     import numpy as np
 
-    def combine_overlapping_lines(self, lines, size):
-        # Convert lines to polar coordinates (r, theta)
-        w, h = size
+    def combine_overlapping_lines(self, lines):
+        def get_line_degree(degree_line):
+            _, degree_theta = self.cart_to_polar(degree_line[0])
+            degree_out = int((math.degrees(degree_theta) + 360) % 180) + 1
+            return degree_out
 
-        lineSkew = 10
-        lineOffset = 10
+        # Sort lines by degree
+        sorted_degree_lines = sorted(lines, key=lambda l: get_line_degree(l))
 
-        vertical_line = (int(w/2) - lineSkew, lineOffset, int(w/2) + lineSkew, h-lineOffset)
-        horizontal_line = (lineOffset, int(h/2) - lineSkew, w-lineOffset, int(h/2) + lineSkew)
+        # check which one is horizontal / vertical
+        x1,y1,x2,y2 = sorted_degree_lines[0][0]
+        first_line_horizontal = abs(x2-x1) > abs(y2-y1)
 
-        horizontal = {
-            "list": [],
-            "ref_line": self.cart_to_polar(horizontal_line)     # horizontal line in center
-        }
-        vertical = {
-            "list": [],
-            "ref_line": self.cart_to_polar(vertical_line)     # vertical line in center
-        }
+        # Assosiate degree change with lines
+        last_degree = None
+        change_degree_assoc = []
+        for idx, vec in enumerate(sorted_degree_lines):
+            # set last line if undefined -> for next loop
+            curr_line_degree = get_line_degree(vec)
+            if last_degree is None:
+                last_degree = curr_line_degree
+                continue
 
-        for line in lines:
-            # Convert Cartesian coordinates to polar coordinates
-            r, theta = self.cart_to_polar(line[0])
-            degree = abs((theta / (2 * np.pi)) * 360) % 360
+            # calculate difference to prev degree
+            change = abs(curr_line_degree / last_degree)
+            change_degree_assoc.append(change)
+            # print(f"{curr_line_degree}°", int(change))
+            last_degree = curr_line_degree
 
-            if 0 < degree < 45 or 135 < degree < 225:
-                # Horizontal line
-                # calculate Y-Value for Intersection with vertical |
-                h_ref_r, h_ref_theta = vertical.get("ref_line")
-                h_check_line_group = [
-                    ((float(h_ref_r), float(h_ref_theta)),),
-                    ((float(r), float(theta)),)
-                ]
-                h_calc_intersection = self.lines_to_intersection(h_check_line_group)
-                if len(h_calc_intersection) == 1:
-                    h_entry = (h_calc_intersection[0][1], line)
-                    horizontal.get("list").append(h_entry)
+        # get Index, where to split between horizontal, vertical
+        max_value = max(change_degree_assoc, key=lambda x: x)
+        indices = [index for index, item in enumerate(change_degree_assoc) if item == max_value]
+        print(f"Max change rate= {max_value} as Position {indices}")
 
+        split_index = indices[0] +1
+        group_one = sorted_degree_lines[:split_index] if first_line_horizontal else sorted_degree_lines[split_index:]
+        group_two = sorted_degree_lines[split_index:] if first_line_horizontal else sorted_degree_lines[:split_index]
+
+        print(f"{bcolors.OKGREEN}found {len(group_one)}-horizontal and {len(group_two)}-vertical{bcolors.ENDC}")
+
+        return group_one, group_two
+
+    def get_relevant_lines(self, line_group, is_horizontal):
+        w, h = self.size
+        line_skew = 5
+        line_offset = 50
+        vertical_line = ((w//2) - line_skew, line_offset, (w//2) + line_skew, h-line_offset)
+        horizontal_line = (line_offset, (h//2) - line_skew, w-line_offset, (h//2) + line_skew)
+        reference_line = vertical_line if is_horizontal else horizontal_line
+
+        intersection_array = []
+        for line in line_group:
+            # calculate X/Y-Value for Intersection with reference line
+            line_intersections = self.line_intersection(reference_line, line[0])
+            if line_intersections is None:
+                print(f"{bcolors.FAIL}No Intersection between Refline and line?{bcolors.ENDC}")
+                print(f"Vertical Line and L: {line[0]}")
+                continue
             else:
-                # Vertical Line
-                # calculate X-Value for intersection with horizontal -
-                v_ref_r, v_ref_theta = horizontal.get("ref_line")
-                v_check_line_group = [
-                    ((float(v_ref_r), float(v_ref_theta)),),
-                    ((float(r), float(theta)),)
-                ]
-                v_calc_intersection = self.lines_to_intersection(v_check_line_group)
-                if len(v_calc_intersection) == 1:
-                    v_entry = (v_calc_intersection[0][0], line)
-                    vertical.get("list").append(v_entry)
+                # Add intersection Value (x or y) with line to list
+                entry = (line_intersections, line)
+                #print(f"{bcolors.OKGREEN}Found Intersection between Refline and line:{bcolors.ENDC}")
+                #print(f"Horizontal Line and L: {line[0]}")
+                intersection_array.append(entry)
 
+        # sort Array for X / Y Value of intersection point
+        sorted_data = sorted(intersection_array, key=lambda tup: tup[0][0 if is_horizontal else 1])
 
+        return sorted_data, reference_line
 
-        # Filter Max / Min for vertical and horizontal
-        horizontal_lines = horizontal.get("list")
-        h_list = sorted(horizontal_lines, key=lambda g: g[0])
-        # Filter Max / Min for vertical and horizontal
-        vertical_lines = vertical.get("list")
-        v_list = sorted(vertical_lines, key=lambda g: g[0])
-
-        print(f"found x{len(h_list)} and y{len(v_list)}")
-
-        if len(h_list) < 2 or len(v_list) < 2:
-            raise Exception("Not enough Lines found")
-
-        for h in h_list:
-            print(f"Horizontal intersection: Y:{h[0]} with line {h[1]}")
-
-        for v in v_list:
-            print(f"Vertical intersection: Y:{v[0]} with line {v[1]}")
-
-
-        collected = [
-            h_list[0][1],
-            v_list[0][1],
-            h_list[-1][1],
-            v_list[-1][1]
-        ]
-
-        check_lines = [
-            (horizontal_line,),
-            (vertical_line,),
-        ]
-        collected += check_lines
-
-        return collected
-
+        # return just first and last line
+        # return sorted_data[0][1], sorted_data[-1][1]
 
     def polar_to_cart(self, line):
         r, theta = line
         x1 = r * np.cos(theta)
         y1 = r * np.sin(theta)
-        x2 = x1 + 1000 * np.cos(theta + np.pi / 2)
-        y2 = y1 + 1000 * np.sin(theta + np.pi / 2)
+        x2 = x1 + 1000 * np.cos(theta + (np.pi / 2))
+        y2 = y1 + 1000 * np.sin(theta + (np.pi / 2))
         return int(x1), int(y1), int(x2), int(y2)
-
 
     def cart_to_polar(self, line):
         x1, y1, x2, y2 = line
@@ -229,35 +219,70 @@ class TransparentImageOverlay:
 
         return r, theta
 
-    def lines_to_intersection(self, lines):
+    def line_intersection(self, line1, line2):
+        x1, y1, x2, y2 = line1
+        x3, y3, x4, y4 = line2
 
-        if lines is None:
-            raise Exception("Could not find any Lines with Hugh-Transform")
+        # Calculate the intersection point of two infinite lines
+        try:
+            xy_factor = np.subtract(
+                np.multiply(x3, y4),
+                np.multiply(y3, x4)
+            )
+            xy_subtract = np.subtract(
+                np.multiply(x1, y2),
+                np.multiply(y1, x2)
+            )
+            x_num = np.subtract(
+                np.multiply(xy_subtract, np.subtract(x3, x4)),
+                np.multiply(np.subtract(x1, x2), xy_factor)
+            )
+            y_num = np.subtract(
+                np.multiply(xy_subtract, np.subtract(y3, y4)),
+                np.multiply(np.subtract(y1, y2), xy_factor)
+            )
+            denom = np.subtract(
+                np.multiply(x1 - x2, y3 - y4),
+                np.multiply(y1 - y2, x3 - x4)
+            )
 
-        def line_intersection(line1, line2):
-            rho1, theta1 = line1[0]
-            rho2, theta2 = line2[0]
-            if np.isclose(theta1, theta2):  # the lines are parallel
+            if np.isclose(denom, 0, atol=1e-6):
+                # Lines are parallel or coincident
                 return None
-            A = np.array([
-                [np.cos(theta1), np.sin(theta1)],
-                [np.cos(theta2), np.sin(theta2)]
-            ])
-            b = np.array([[rho1], [rho2]])
-            x0, y0 = np.linalg.solve(A, b)
-            x0, y0 = int(np.round(x0)), int(np.round(y0))
+            else:
+                x = int(np.divide(x_num, denom))
+                y = int(np.divide(y_num, denom))
 
-            return [x0, y0]
+                # Only return plausible values
+                if np.logical_and(
+                        np.logical_and(0 < x, x < self.size[0]),
+                        np.logical_and(0 < y, y < self.size[1])
+                ):
+                    return x, y
+                else:
+                    return None
+        except Exception as e:
+            print(f"{bcolors.FAIL}Overflow in Intersection calculation: {e}{bcolors.ENDC}")
+            return None
 
-        intersections = []
-        for i, line1 in enumerate(lines):
-            for line2 in lines[i + 1:]:
-                intersection = line_intersection(line1, line2)
-                if intersection is not None and intersection[0] > 0 and intersection[1] > 0:
-                    intersections.append(intersection)
+    def get_screen_position(self, line_group):
+        intersection_points = []
+        run_length = len(line_group)
+        # Iterate through all combinations of lines
+        for i in range(run_length):
+            curr_line = line_group[i][0]
+            next_line = line_group[i+1][0] if i+1 < run_length else line_group[0][0]
 
-        # draw Demo Image
-        return intersections
+            print(f"check {curr_line} with {next_line}")
+
+            intersect = self.line_intersection(curr_line, next_line)
+            if intersect is not None:
+                intersection_points.append(intersect)
+
+        if len(intersection_points) == 4:
+            return intersection_points
+        else:
+            return None
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
@@ -289,10 +314,10 @@ class TransparentImageOverlay:
 
         return alpha_mask, overlay_layer
 
-    def create_border_glow(self, screen, size):
+    def create_border_glow(self, screen):
         print(f"{bcolors.OKCYAN}calculating screen glow{bcolors.ENDC}")
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
-        empty_image = np.zeros((size[1], size[0], 4), dtype=np.uint8)
+        empty_image = np.zeros((self.size[1], self.size[0], 4), dtype=np.uint8)
         image = self.overlay(screen, empty_image)
 
         # blur new generated image violently
@@ -317,7 +342,7 @@ class TransparentImageOverlay:
 
         return blurred
 
-    def add_four_point_transform(self, screenshot, size, mask):
+    def add_four_point_transform(self, screenshot, mask):
         print(f"{bcolors.OKCYAN}transforming screenshot{bcolors.ENDC}")
         # Calculate the 4-point transformation
         pts_src = np.array(
@@ -325,7 +350,7 @@ class TransparentImageOverlay:
             dtype=np.float32)
 
         h, status = cv2.findHomography(pts_src, self.transformPoints)
-        out = cv2.warpPerspective(screenshot, h, size)
+        out = cv2.warpPerspective(screenshot, h, self.size)
 
         # Apply a Mask to the wraped image
         if len(mask) > 0:
