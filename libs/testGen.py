@@ -5,7 +5,7 @@ import numpy as np
 
 class generateTestSquare:
 
-    def __init__(self, count, path = "output/test/"):
+    def __init__(self, count, path="output/test/"):
         self.outputPath = path
         self.count = count
 
@@ -29,7 +29,7 @@ class generateTestSquare:
 
         r_pos, r_size, r_contour = self.create_round_rectangle(width, height)
 
-        if r_pos[0] % 6 == 0:
+        if r_pos[0] % 2 == 0:   # 50% with notch
             # Sometimes create a Notch onto r_contour
             n_pos, n_size, n_contour = self.create_round_rectangle(*r_size)
             r_contour[n_pos[1]:n_pos[1] + n_size[1], n_pos[0]:n_pos[0] + n_size[0]] = n_contour
@@ -38,7 +38,7 @@ class generateTestSquare:
         transform_coordinates = self.randomTransform(
             top_left=r_pos,
             bottom_right=(r_pos[0]+r_size[0], r_pos[1]+r_size[1]),
-            max = min(r_size) // 5
+            max=(min(r_size) // 6)
         )
 
         transform_screen = self.fourWayTransform(r_contour, (width, height), transform_coordinates)
@@ -91,7 +91,6 @@ class generateTestSquare:
 
         # Create black backdrop
         screen_contour = np.zeros((rect_height, rect_width, 3), dtype=np.uint8)
-        #screen_contour[:, :, 2] = 150
 
         thickness = 5
         b = thickness+1  # border
