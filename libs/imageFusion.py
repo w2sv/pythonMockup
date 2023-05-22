@@ -59,7 +59,7 @@ class TransparentImageOverlay:
 
         y_points, y_lines = zip(*sorted_y_intersect)
         x_points, x_lines = zip(*sorted_x_intersect)
-        four_borders = [y_lines[0], x_lines[-1], y_lines[-1], x_lines[0]]
+        four_borders = (y_lines[0], x_lines[-1], y_lines[-1], x_lines[0])
 
         if debug:
             all_intersection_img = background.copy()
@@ -81,7 +81,7 @@ class TransparentImageOverlay:
 
         self.transformPoints = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
-        image_comp = self.applyLayer(background, True)
+        image_comp = self.applyLayer(background, False)
 
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)
@@ -134,7 +134,7 @@ class TransparentImageOverlay:
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(gray, 50, 150, apertureSize=3)
         # make edge contour little bit bigger
-        kernel = np.ones((5, 5), np.uint8)
+        kernel = np.ones((3, 3), np.uint8)
         dilated = cv2.dilate(edged, kernel)
 
         return dilated
@@ -146,13 +146,13 @@ class TransparentImageOverlay:
         # Huff-Transformation Huff-Lines in Point (X, Y) form
 
         h, w = contour.shape[:2]
-        min_line_length = min([w, h]) // 6
+        min_line_length = min([w, h]) // 10
 
         lines = cv2.HoughLinesP(
             image=contour,
             rho=1,
             theta=np.pi / 720,
-            threshold=3,
+            threshold=50,
             minLineLength=min_line_length,
             maxLineGap=None
         )
@@ -355,7 +355,7 @@ class TransparentImageOverlay:
         image = self.overlay(screen, empty_image)
 
         # blur new generated image violently
-        print("...blurr image")
+        print("...blur image")
         blurred = cv2.blur(image, (100, 100))
         def bezier_curve(t, sludge):
             p1 = [0,sludge]
@@ -369,7 +369,7 @@ class TransparentImageOverlay:
             return pixel
 
         # Apply the alpha adjustment
-        print("...adjust blurr opacity based on brightness")
+        print("...adjust blur opacity based on brightness")
         for i in range(blurred.shape[0]):
             for j in range(blurred.shape[1]):
                 blurred[i, j] = adjust_alpha(blurred[i, j])

@@ -8,7 +8,7 @@ from libs.imageFusion import TransparentImageOverlay
 
 
 # set image creation runs
-count = 10
+count = 50
 
 # Create test folder
 myPath = f"output/test/run-X{count}-V"
