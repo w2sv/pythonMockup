@@ -10,7 +10,7 @@ class TransparentImageOverlay:
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
         self.transformPoints = []
-        self.size = (0,0)
+        self.size = (0, 0)
 
     def overlay_images(self, folder, file, keepScreenshot=False, debug=True):
 
@@ -28,7 +28,7 @@ class TransparentImageOverlay:
                     x, y, = dot
                     cv2.circle(image, (x, y), 15, color, 3)
 
-        # Öffne die beiden Bilder und konvertiere sie in BGRA-Modus, um Transparenz zu unterstützen
+        # Oeffne das Bild (rbga)
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
 
         h, w = background.shape[:2]
@@ -39,9 +39,9 @@ class TransparentImageOverlay:
         if debug:
             cv2.imwrite(folder+".temp/"+file+"-1-contour.png", contour_image)
 
-        # get Huffman Lines
-        all_lines = self.get_huffman_lines(contour_image)
-        print(f"{bcolors.OKBLUE}Huffman detected {len(all_lines)}{bcolors.ENDC} lines in contour")
+        # get Hugh Lines
+        all_lines = self.get_hough_lines(contour_image)
+        print(f"{bcolors.OKBLUE}Hough-transform detected {len(all_lines)} lines in contour{bcolors.ENDC}")
         mapped_x, mapped_y = self.combine_overlapping_lines(all_lines)
 
         # debug Image
@@ -49,7 +49,7 @@ class TransparentImageOverlay:
             all_lines_img = background.copy()
             print_lines(mapped_x, all_lines_img, (255,0,0, 255))
             print_lines(mapped_y, all_lines_img, (255,0,255, 255))
-            cv2.imwrite(folder+".temp/"+file+"-2-huffmanLines.png", all_lines_img)
+            cv2.imwrite(folder+".temp/"+file+"-2-houghLines.png", all_lines_img)
 
         sorted_y_intersect, vert_line = self.get_relevant_lines(mapped_x, True)
         sorted_x_intersect, hori_line = self.get_relevant_lines(mapped_y, False)
@@ -74,6 +74,8 @@ class TransparentImageOverlay:
             print(f"{bcolors.FAIL}Could not find screen corners from data{bcolors.ENDC}")
             return False
 
+        print(f"{bcolors.OKGREEN}four screen-corner coordinates calculated{bcolors.ENDC}")
+
         if debug:
             edged_img = background.copy()
             print_dots(intersections, edged_img, (255,255,255, 255))
@@ -81,7 +83,13 @@ class TransparentImageOverlay:
 
         self.transformPoints = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
-        image_comp = self.applyLayer(background, False)
+        easy_mode = False
+        print(f"{bcolors.OKCYAN}Starting image processing ...{bcolors.ENDC}")
+
+        easy_compositing = "just screenshot position on mockup"
+        hard_compositing = "background mockup image, screenshot, glow and glare"
+        print(f"{bcolors.BOLD}Compositing {easy_compositing if easy_mode else hard_compositing}{bcolors.ENDC}")
+        image_comp = self.applyLayer(background, easy_mode)
 
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)
@@ -103,13 +111,13 @@ class TransparentImageOverlay:
 
         if not easy_mode:
             screen_glow = self.create_border_glow(transformed_screen)
-
             print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
             layer1 = self.overlay(screen_glow, bg)
             print(f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
             layer2 = self.overlay(transformed_screen, layer1)
             print(f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
             return self.overlay(screen_glare, layer2)
+
         print(f"...blending layer")
         return self.overlay(transformed_screen, bg)
 
@@ -140,10 +148,10 @@ class TransparentImageOverlay:
         return dilated
 
 
-    def get_huffman_lines(self, contour):
+    def get_hough_lines(self, contour):
         h, w = contour.shape[:2]
         self.size = (w, h)
-        # Huff-Transformation Huff-Lines in Point (X, Y) form
+        # Hugh-Transformation Hugh-Lines in Point (X, Y) form
 
         h, w = contour.shape[:2]
         min_line_length = min([w, h]) // 10
@@ -158,8 +166,6 @@ class TransparentImageOverlay:
         )
 
         return lines
-
-    import numpy as np
 
     def combine_overlapping_lines(self, lines):
         def get_line_degree(degree_line):
@@ -203,13 +209,13 @@ class TransparentImageOverlay:
         # get Index, where to split between horizontal, vertical
         max_value = max(change_degree_assoc, key=lambda x: x)
         indices = [index for index, item in enumerate(change_degree_assoc) if item == max_value]
-        print(f"Split Vertical to Horizontal at index {indices} after delta degree {max_value}")
+        #print(f"Split Vertical to Horizontal at index {indices} after delta degree {max_value}")
 
         split_index = indices[0] +1
         group_one = sorted_degree_lines[:split_index] if first_line_horizontal else sorted_degree_lines[split_index:]
         group_two = sorted_degree_lines[split_index:] if first_line_horizontal else sorted_degree_lines[:split_index]
 
-        print(f"{bcolors.OKGREEN}found {len(group_one)}-horizontal and {len(group_two)}-vertical{bcolors.ENDC}")
+        print(f"{bcolors.OKGREEN}seperated {len(group_one)}-horizontal and {len(group_two)}-vertical{bcolors.ENDC} lines")
 
         return group_one, group_two
 
@@ -240,9 +246,6 @@ class TransparentImageOverlay:
         sorted_data = sorted(intersection_array, key=lambda tup: tup[0][0 if is_horizontal else 1])
 
         return sorted_data, reference_line
-
-        # return just first and last line
-        # return sorted_data[0][1], sorted_data[-1][1]
 
     def line_intersection(self, line1, line2):
         scaling_factor = max(*self.size)
@@ -293,7 +296,6 @@ class TransparentImageOverlay:
         if len(intersection_points) == 4:
             # sort points in right order
             sorted_intersects = self.sort_points_clockwise(intersection_points)
-            print(sorted_intersects)
             return sorted_intersects
         else:
             return None
@@ -383,7 +385,6 @@ class TransparentImageOverlay:
             [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],
             dtype=np.float32)
 
-        print(self.transformPoints)
         h, status = cv2.findHomography(pts_src, self.transformPoints)
         out = cv2.warpPerspective(screenshot, h, self.size)
 
