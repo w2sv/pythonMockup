@@ -11,7 +11,8 @@ from libs.imageFusion import TransparentImageOverlay
 count = 50
 
 # Create test folder
-myPath = f"output/test/run-X{count}-V"
+myPath = f"output/_test/run-X{count}-V"
+
 prefixNbr = 1
 folder = myPath+f"{prefixNbr}/"
 
@@ -32,20 +33,22 @@ while True:
 print("created folder", folder)
 
 # generate random transformed rectangles for test purposes
+print(f"Generating {count} images...")
 testEngine = generateTestSquare(count, folder)
 images = testEngine.test_run()
 
-print(f"Generating {count} images...")
+# initialize testing class
 imageAnalyzer = TransparentImageOverlay("", "")
-print("...successfull")
+print("...successful")
 
 blue_c = (255,0,0)
 red_c = (0,0,255)
 
+# Create Demo Image Test method with image Analyzer
 def hughPointLinecheck(contour, background):
     cv2.imwrite(folder + f"{x}-1-canny.png", contour)
 
-    lines = imageAnalyzer.get_huffman_lines(contour)
+    lines = imageAnalyzer.get_hough_lines(contour)
     mapped_lines_x, mapped_lines_y = imageAnalyzer.combine_overlapping_lines(lines)
 
     mapped_background = background.copy()
@@ -127,7 +130,6 @@ def hughPointLinecheck(contour, background):
 
     print("PointCheck: Saved report image")
     return True
-
 
 
 successCount = 0
