@@ -9,7 +9,7 @@ from selenium.webdriver.common.by import By
 from src.cli import bcolors
 
 
-class WebsiteScreenshot:
+class WebsiteScreenshotEngine:
     def __init__(self, url, directory, cookieClass=False, waitTime=5, ):
         geckodriver_autoinstaller.install()
 

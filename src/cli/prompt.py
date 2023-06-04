@@ -38,7 +38,7 @@ class PromptManager:
 
     def getDevices(self):
         # Load only Device Mockup
-        with open('src/mockups.json', 'r') as f:
+        with open('assets/mockups.json', 'r') as f:
             return json.load(f)
 
     def initCheckbox(self):

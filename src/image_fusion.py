@@ -7,7 +7,7 @@ import numpy as np
 from src.cli import bcolors
 
 
-class TransparentImageOverlay:
+class TransparentImageOverlayer:
     def __init__(self, bottom_image_path, top_image_path):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path

@@ -3,9 +3,9 @@ import os
 import tldextract
 
 from src.cli import bcolors
-from src.image_fusion import TransparentImageOverlay
+from src.image_fusion import TransparentImageOverlayer
 from src.cli.prompt import PromptManager
-from src.selenium import WebsiteScreenshot
+from src.screenshot_engine import WebsiteScreenshotEngine
 
 
 def process(selectedDevices, prompt_manager: PromptManager):
@@ -19,7 +19,7 @@ def process(selectedDevices, prompt_manager: PromptManager):
         os.makedirs(newPath)
 
     # start selenium Engine
-    screenshotEngine = WebsiteScreenshot(
+    screenshotEngine = WebsiteScreenshotEngine(
         url=prompt_manager.url,
         directory=newPath + ".temp/",
         cookieClass=prompt_manager.hideClass,
@@ -47,7 +47,7 @@ def process(selectedDevices, prompt_manager: PromptManager):
             realIndx = ix + 1
             print(
                 f"\n{bcolors.HEADER}Generating {realIndx}/{len(mockupArr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
-            photoBooth = TransparentImageOverlay(
+            photoBooth = TransparentImageOverlayer(
                 bottom_image_path=n,
                 top_image_path=newScreenshot
             )
