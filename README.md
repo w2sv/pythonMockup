@@ -19,10 +19,6 @@ So far screen recognition only works reliably with provided mockups in `./assets
 - Multiple mockups per device in one go
 - It's possible to include own mockups in `./assets/mockup/`-Folder and add them in `./src/mockups.json`. This feature might be still a little bit buggy
 
-**Run**
-
-    python -m src
-
 
 **Requirements**
 --
@@ -30,12 +26,15 @@ So far screen recognition only works reliably with provided mockups in `./assets
 - Firefox installed
 - Pip requirements fulfilled
 
-**Pip requirements**
+**Installing**
 --
-- selenium `pip install -U selenium`
-- geckodriver-autoinstaller `pip install geckodriver-autoinstaller`
-- Open CV2 `pip install opencv-python`
-- numpy `pip install numpy`
+
+    pip install -r requirements.txt
+
+
+**Running**
+--
+    python -m src
 
 
 **Features implemented**
