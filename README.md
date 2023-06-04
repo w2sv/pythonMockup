@@ -2,7 +2,7 @@
 
 ## Notice
 Still under development. Feel free to use or contribute!
-So far screen recognition only works reliable with provided mockups in `./src/mockups.json`
+So far screen recognition only works reliably with provided mockups in `./assets/mockups.json`
 
 ### Python lib for generating device mockups from live web urls
 
@@ -17,11 +17,11 @@ So far screen recognition only works reliable with provided mockups in `./src/mo
 - Exclude HTML elements from website by class-name
 - Adapts max screenshot-resolution depending on user screen resolution
 - Multiple mockups per device in one go
-- It's possible to include own mockups in `./src/mockup/`-Folder and add them in `./src/mockups.json`. This feature might be still a little bit buggy
+- It's possible to include own mockups in `./assets/mockup/`-Folder and add them in `./src/mockups.json`. This feature might be still a little bit buggy
 
-To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
+**Run**
 
-    python3 PythonMockup.py
+    python -m src
 
 
 **Requirements**

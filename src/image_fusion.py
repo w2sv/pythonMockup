@@ -1,8 +1,10 @@
+import math
+import os
+
 import cv2
 import numpy as np
-import os
-import math
-from libs.bColor import bcolors
+
+from src.cli import bcolors
 
 
 class TransparentImageOverlay:
@@ -13,7 +15,6 @@ class TransparentImageOverlay:
         self.transformPoints = []
         self.crossToleranz = 150
         self.perimterToleranz = 0.05
-
 
     def overlay_images(self, folder, file, keepScreenshot=False):
 
@@ -30,7 +31,7 @@ class TransparentImageOverlay:
         imageComp = self.applyLayer(background)
 
         # Save the new image
-        cv2.imwrite(folder+file+".png", imageComp)
+        cv2.imwrite(folder + file + ".png", imageComp)
 
         if keepScreenshot is False:
             self.removeScreenshotTemp()
@@ -53,15 +54,17 @@ class TransparentImageOverlay:
         if not easy_mode:
             screen_glow = self.create_border_glow(transformed_screen, bg_size)
 
-            print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
+            print(
+                f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
             layer1 = self.overlay(screen_glow, bg)
-            print(f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
+            print(
+                f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
             layer2 = self.overlay(transformed_screen, layer1)
-            print(f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
+            print(
+                f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
             return self.overlay(screen_glare, layer2)
         print(f"...blending layer")
         return self.overlay(transformed_screen, bg)
-
 
     def getScreenPoints(self, img, dir, file):
         print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
@@ -83,7 +86,7 @@ class TransparentImageOverlay:
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
         edged = cv2.Canny(gray, 75, 200)
-        #cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
+        # cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
 
         print("...approximate contours")
         # aproximate Points from contour lines
@@ -97,7 +100,7 @@ class TransparentImageOverlay:
         for line in lines:
             point, p2 = line
             cv2.circle(demoImage, point, 5, (255, 0, 0, 255), -1)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+        cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
 
         # calculate only collinear lines from all lines
         print("...generate collinear lines from contours")
@@ -106,7 +109,7 @@ class TransparentImageOverlay:
         for line in collinear_lines:
             p1, p2 = line
             cv2.line(demoImage, p1, p2, (0, 0, 150, 255), 5)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+        cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
 
         if len(collinear_lines) < 4:
             raise Exception(f"{bcolors.FAIL}Could not find screen border from collinear lines{bcolors.ENDC}")
@@ -134,7 +137,7 @@ class TransparentImageOverlay:
         if len(screen_coordinates) > 1:
             for pt in screen_coordinates:
                 cv2.circle(demoImage, pt, 10, (0, 0, 255, 255), 8)
-            cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+            cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
 
         if len(screen_coordinates) != 4:
             raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
@@ -150,7 +153,7 @@ class TransparentImageOverlay:
             # Approximate the contour with a polygon
             perimeter = cv2.arcLength(cnt, True)
             approx = cv2.approxPolyDP(cnt, self.perimterToleranz * perimeter, True)
-#
+            #
             # Check if the polygon has four sides
             if len(approx) == 4:
                 print(f"{bcolors.OKGREEN}Screen-contour found on mockup{bcolors.ENDC}")
@@ -161,11 +164,10 @@ class TransparentImageOverlay:
                         break
 
                     current_point = cnt[ix][0]
-                    next_point = cnt[ix+1][0]
+                    next_point = cnt[ix + 1][0]
 
                     lines.append((current_point, next_point))
                 break
-
 
         return lines
 
@@ -176,8 +178,8 @@ class TransparentImageOverlay:
         )
 
         if normalize:
-            magnitude = math.sqrt(sum(component**2 for component in vector))
-            return tuple(component/magnitude for component in vector)
+            magnitude = math.sqrt(sum(component ** 2 for component in vector))
+            return tuple(component / magnitude for component in vector)
 
         return vector
 
@@ -197,7 +199,7 @@ class TransparentImageOverlay:
                 break
 
             current_line = line
-            next_line = lineArr[ix+1]
+            next_line = lineArr[ix + 1]
 
             emptyLine = len(line_builder) < 1
 
@@ -255,6 +257,7 @@ class TransparentImageOverlay:
                 return x, y
             else:
                 return None
+
         def angle(point):
             x, y = point
             return math.atan2(y, x)
@@ -287,7 +290,6 @@ class TransparentImageOverlay:
         bigger = lineArray[:4]
         return bigger
 
-
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
         # Bisher wird das ganze Bild abgesucht
@@ -305,7 +307,7 @@ class TransparentImageOverlay:
                 b, g, r, a = input_image[y, x]
 
                 # Check if the pixel has a high green value and low red and blue values
-                if g > 150 and r < 150 and b < 150:
+                if g > 150 > r and b < 150:
                     # Create a masking pixel on the alpha mask
                     alpha_mask[y, x] = 255
 
@@ -327,10 +329,12 @@ class TransparentImageOverlay:
         # blur new generated image violently
         print("...blurr image")
         blurred = cv2.blur(image, (100, 100))
+
         def bezier_curve(t, sludge):
-            p1 = [0,sludge]
+            p1 = [0, sludge]
             p2 = [1 - sludge, 1]
-            return ((1 - t) ** 3 * p1[0]) + (3 * (1 - t) ** 2 * t * p1[1]) + (3 * (1 - t) * t ** 2 * p2[0]) + (t ** 3 * p2[1])
+            return ((1 - t) ** 3 * p1[0]) + (3 * (1 - t) ** 2 * t * p1[1]) + (3 * (1 - t) * t ** 2 * p2[0]) + (
+                    t ** 3 * p2[1])
 
         def adjust_alpha(pixel):
             color_value = np.mean(pixel[:3]) / 255

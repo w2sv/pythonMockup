@@ -1,10 +1,12 @@
 import os
 import random
 import time
+
 import geckodriver_autoinstaller
 from selenium.webdriver import Firefox, FirefoxOptions
 from selenium.webdriver.common.by import By
-from libs.bColor import bcolors
+
+from src.cli import bcolors
 
 
 class WebsiteScreenshot:
@@ -52,16 +54,16 @@ class WebsiteScreenshot:
         b_width, b_height, b_ui_height = self.getBrowserSize()
 
         # calculate aspect ratios
-        ar1 = width/height
-        ar2 = b_width/b_height
+        ar1 = width / height
+        ar2 = b_width / b_height
 
         # if ar1 > ar2: scale to width
         # else: scale to height
-        sf = b_width/width if ar1 > ar2 else b_height/height
+        sf = b_width / width if ar1 > ar2 else b_height / height
 
         belowConst = 0.85
-        newWidth = round(sf*width*belowConst)
-        newHeight = round(sf*height*belowConst)
+        newWidth = round(sf * width * belowConst)
+        newHeight = round(sf * height * belowConst)
 
         print(f"Resize width: {bcolors.OKBLUE}{width}->{newWidth}px{bcolors.ENDC}")
         print(f"Resize height: {bcolors.OKBLUE}{height}->{newHeight}px{bcolors.ENDC}")
@@ -76,7 +78,7 @@ class WebsiteScreenshot:
         # Generate file name
         random_bits = random.getrandbits(128)
         imageHash = "%032x" % random_bits
-        tempPath = self.outputDir+imageHash[:16]+".png"
+        tempPath = self.outputDir + imageHash[:16] + ".png"
 
         print("...taking screenshot")
         self.driver.save_screenshot(tempPath)
