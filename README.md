@@ -17,7 +17,7 @@ So far screen recognition only works reliably with provided mockups in `./assets
 - Exclude HTML elements from website by class-name
 - Adapts max screenshot-resolution depending on user screen resolution
 - Multiple mockups per device in one go
-- It's possible to include own mockups in `./assets/mockup/`-Folder and add them in `./src/mockups.json`. This feature might be still a little bit buggy
+- It's possible to include own mockups in `./assets/mockup/`-Folder and add them in `./assets/mockups.json`. This feature might be still a little bit buggy
 
 
 **Requirements**
