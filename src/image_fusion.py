@@ -14,7 +14,7 @@ class TransparentImageOverlayer:
         self.transform_points = []
         self.size = (0, 0)
 
-    def overlay_images(self, folder, file, keep_screenshot=False, debug=True):
+    def overlay_images(self, folder, file, keepScreenshot=False, debug=True):
 
         def print_lines(lines_data, image, color=(255,0,0)):
             if lines_data is not None:
@@ -39,7 +39,7 @@ class TransparentImageOverlayer:
         # Calculate 4-Point transformation
         contour_image = self.get_contour(background)
         if debug:
-            cv2.imwrite(folder + ".temp/" + file + "-1-contour.png", contour_image)
+            cv2.imwrite(folder+".temp/"+file+"-1-contour.png", contour_image)
 
         # get Hugh Lines
         all_lines = self.get_hough_lines(contour_image)
@@ -83,7 +83,7 @@ class TransparentImageOverlayer:
             print_dots(intersections, edged_img, (255,255,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-4-finalPoints.png", edged_img)
 
-        self.transform_points = np.array(intersections, dtype=np.float32)
+        self.transformPoints = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         easy_mode = False
         print(f"{bcolors.OKCYAN}Starting image processing ...{bcolors.ENDC}")
@@ -91,13 +91,13 @@ class TransparentImageOverlayer:
         easy_compositing = "just screenshot position on mockup"
         hard_compositing = "background mockup image, screenshot, glow and glare"
         print(f"{bcolors.BOLD}Compositing {easy_compositing if easy_mode else hard_compositing}{bcolors.ENDC}")
-        image_comp = self.apply_layer(background, easy_mode)
+        image_comp = self.applyLayer(background, easy_mode)
 
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)
 
-        if keep_screenshot is False:
-            self.remove_screenshot_temp()
+        if keepScreenshot is False:
+            self.removeScreenshotTemp()
 
     def apply_layer(self, bg, easy_mode=False):
         # Oeffne Screenshot
