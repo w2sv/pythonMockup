@@ -8,7 +8,7 @@ from libs.imageFusion import TransparentImageOverlay
 
 
 # set image creation runs
-count = 50
+count = 100
 
 # Create test folder
 myPath = f"output/_test/run-X{count}-V"
@@ -36,10 +36,10 @@ print("created folder", folder)
 print(f"Generating {count} images...")
 testEngine = generateTestSquare(count, folder)
 images = testEngine.test_run()
+print(f"{bcolors.OKGREEN}...successful{bcolors.ENDC}")
 
 # initialize testing class
 imageAnalyzer = TransparentImageOverlay("", "")
-print("...successful")
 
 blue_c = (255,0,0)
 red_c = (0,0,255)
@@ -78,13 +78,13 @@ def hughPointLinecheck(contour, background):
     cv2.imwrite(folder + f"{x}-2-coord.png", background)
 
     if mapped_lines_x is not None:
-        print(f"PointCheck: mapped to {len(mapped_lines_x)} horizontal lines in Image")
+        print(f"PointCheck: mapped to {bcolors.OKCYAN}{len(mapped_lines_x)} horizontal lines{bcolors.ENDC} in Image")
         print_lines(mapped_lines_x, mapped_background)
     else:
         return False
 
     if mapped_lines_y is not None:
-        print(f"PointCheck: mapped to {len(mapped_lines_y)} vertical lines in Image")
+        print(f"PointCheck: mapped to {bcolors.OKCYAN}{len(mapped_lines_y)} vertical lines{bcolors.ENDC} in Image")
         print_lines(mapped_lines_y, mapped_background, red_c)
     else:
         return False
@@ -121,12 +121,14 @@ def hughPointLinecheck(contour, background):
 
     transform_points = imageAnalyzer.get_screen_position(four_borders)
 
-    if transform_points is not None:
+    if transform_points is not None and len(transform_points) >= 4:
         print_dots(transform_points, final_border, (255,255,255))
         cv2.imwrite(folder + f"{x}-4-reduced.png", final_border)
     else:
         print(f"{bcolors.FAIL}Could not find any intersections{bcolors.ENDC}")
         return False
+
+
 
     print("PointCheck: Saved report image")
     return True
