@@ -13,7 +13,6 @@ class TransparentImageOverlayer:
         self.top_image_path = top_image_path
 
         self.transformPoints = []
-        self.crossToleranz = 150
         self.perimterToleranz = 0.05
 
     def overlay_images(self, folder, file, keepScreenshot=False):
@@ -22,7 +21,7 @@ class TransparentImageOverlayer:
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
 
         # Calculate 4-Point transformation
-        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='float32')
+        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='uint8')
 
         for x in self.transformPoints:
             print(x)
@@ -78,6 +77,7 @@ class TransparentImageOverlayer:
         # Threshold the image to get only green pixels with high intensity
         mask = cv2.inRange(hsv, lower_green, upper_green)
         mask = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)[1]
+        #cv2.imwrite(dir+".temp/"+file+"-mask.png", mask)
 
         # Apply the mask to the input image
         green_image = cv2.bitwise_and(img, img, mask=mask)
@@ -85,40 +85,82 @@ class TransparentImageOverlayer:
         # Convert the masked image to grayscale, blur it, and find edges
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
+<<<<<<< HEAD:src/image_fusion.py
         edged = cv2.Canny(gray, 75, 200)
         # cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
+=======
+        edged = cv2.Canny(gray, 50, 150)
+>>>>>>> 730c7b8 (first hugh-transformation attempts):libs/imageFusion.py
 
-        print("...approximate contours")
-        # aproximate Points from contour lines
-        contours, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        lines = np.array(self.contour_to_lines(contours))
+        dilated = cv2.dilate(edged, None)
+        cv2.imwrite(dir+".temp/"+file+"-contour.png", dilated)
 
-        if len(lines) < 1:
-            raise Exception(f"{bcolors.FAIL}Could not find any contours{bcolors.ENDC}")
+        # Huff-Transformation Huff-Lines
+
+        lines = cv2.HoughLines(
+            image=dilated,
+            rho= 0.01,   # max_pixel_to_line_distance
+            theta= np.pi / 180, # degree_tolerancee
+            threshold= 50  # min_weights_threshold
+        )
+
+        if lines is None:
+            raise Exception("Could not find any Lines with Hugh-Transform")
 
         demoImage = img.copy()
+<<<<<<< HEAD:src/image_fusion.py
         for line in lines:
             point, p2 = line
             cv2.circle(demoImage, point, 5, (255, 0, 0, 255), -1)
         cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
+=======
+        # Draw Lines
+        for rho, theta in lines[:, 0]:
+            a = np.cos(theta)
+            b = np.sin(theta)
+            x0 = a * rho
+            y0 = b * rho
+            x1 = int(x0 + 1000 * (-b))
+            y1 = int(y0 + 1000 * (a))
+            x2 = int(x0 - 1000 * (-b))
+            y2 = int(y0 - 1000 * (a))
+            cv2.line(demoImage, (x1, y1), (x2, y2), (0, 0, 255,255), 3)
+>>>>>>> 730c7b8 (first hugh-transformation attempts):libs/imageFusion.py
 
-        # calculate only collinear lines from all lines
-        print("...generate collinear lines from contours")
-        collinear_lines = self.find_collinear_lines(lines)
+        cv2.imwrite(dir+".temp/"+file+"-all-lines.png", demoImage)
 
+<<<<<<< HEAD:src/image_fusion.py
         for line in collinear_lines:
             p1, p2 = line
             cv2.line(demoImage, p1, p2, (0, 0, 150, 255), 5)
         cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
+=======
+        def line_intersection(line1, line2):
+            rho1, theta1 = line1[0]
+            rho2, theta2 = line2[0]
+            if np.isclose(theta1, theta2):  # the lines are parallel
+                return None
+            A = np.array([
+                [np.cos(theta1), np.sin(theta1)],
+                [np.cos(theta2), np.sin(theta2)]
+            ])
+            b = np.array([[rho1], [rho2]])
+            x0, y0 = np.linalg.solve(A, b)
+            x0, y0 = int(np.round(x0)), int(np.round(y0))
+>>>>>>> 730c7b8 (first hugh-transformation attempts):libs/imageFusion.py
 
-        if len(collinear_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find screen border from collinear lines{bcolors.ENDC}")
+            return [x0, y0]
 
-        # get four biggest lines from array
-        print("...calculate line interception")
+        intersections = []
+        for i, line1 in enumerate(lines):
+            for line2 in lines[i + 1:]:
+                intersection = line_intersection(line1, line2)
+                if intersection is not None and intersection[0] > 0 and intersection[1] > 0:
+                    intersections.append(intersection)
 
-        border_lines = self.get_biggest(collinear_lines)
+        print(intersections)
 
+<<<<<<< HEAD:src/image_fusion.py
         if len(border_lines) > 1:
             for lineF in border_lines:
                 p1, p2 = lineF
@@ -289,6 +331,13 @@ class TransparentImageOverlayer:
         lineArray.sort(key=length, reverse=True)
         bigger = lineArray[:4]
         return bigger
+=======
+        if len(intersections) != 4:
+            raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
+
+        # draw Demo Image
+        return intersections
+>>>>>>> 730c7b8 (first hugh-transformation attempts):libs/imageFusion.py
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
