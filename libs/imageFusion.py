@@ -35,6 +35,7 @@ class TransparentImageOverlay:
         self.size = (w, h)
 
         # Calculate 4-Point transformation
+<<<<<<< HEAD
         contour_image = self.get_contour(background)
         if debug:
             cv2.imwrite(folder+".temp/"+file+"-1-contour.png", contour_image)
@@ -43,6 +44,16 @@ class TransparentImageOverlay:
         all_lines = self.get_hough_lines(contour_image)
         print(f"{bcolors.OKBLUE}Hough-transform detected {len(all_lines)} lines in contour{bcolors.ENDC}")
         mapped_x, mapped_y = self.combine_overlapping_lines(all_lines)
+=======
+        contourImage = self.get_contour(background)
+        cv2.imwrite(dir+".temp/"+file+"-contour.png", contourImage)
+
+        # get Huffman Lines
+        contourLines = self.get_huffman_lines(contourImage)
+
+        intersections = self.lines_to_intersection(contourLines)
+        self.transformPoints = np.array(intersections, dtype='uint8')
+>>>>>>> 77979e8 (demo working)
 
         # debug Image
         if debug:
@@ -147,6 +158,7 @@ class TransparentImageOverlay:
 
         return dilated
 
+<<<<<<< HEAD
 
     def get_hough_lines(self, contour):
         h, w = contour.shape[:2]
@@ -271,6 +283,28 @@ class TransparentImageOverlay:
             if -1 < x < self.size[0] and -1 < y < self.size[1]:
                 return int(x), int(y)
             else:
+=======
+    def get_huffman_lines(self, contour):
+        # Huff-Transformation Huff-Lines
+        lines = cv2.HoughLines(
+            image=contour,
+            rho=.1,  # max_pixel_to_line_distance
+            theta=np.pi / 180,  # 5*360 steps
+            threshold= 150  # min_weights_threshold
+        )
+
+        return lines
+
+    def lines_to_intersection(self, lines):
+
+        if lines is None:
+            raise Exception("Could not find any Lines with Hugh-Transform")
+
+        def line_intersection(line1, line2):
+            rho1, theta1 = line1[0]
+            rho2, theta2 = line2[0]
+            if np.isclose(theta1, theta2):  # the lines are parallel
+>>>>>>> 77979e8 (demo working)
                 return None
 
         except Exception as e:
@@ -285,6 +319,7 @@ class TransparentImageOverlay:
             curr_line = line_group[i][0]
             next_line = line_group[(i + 1) % num_lines][0]
 
+<<<<<<< HEAD
             # print(f"check {curr_line} with {next_line}")
             intersect = self.line_intersection(curr_line, next_line)
 
@@ -292,6 +327,10 @@ class TransparentImageOverlay:
                 intersection_points.append(intersect)
             else:
                 return None
+=======
+        if len(intersections) != 4:
+            raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
+>>>>>>> 77979e8 (demo working)
 
         if len(intersection_points) == 4:
             # sort points in right order
@@ -304,6 +343,7 @@ class TransparentImageOverlay:
         def distance_to_origin(point):
             return math.sqrt(point[0] ** 2 + point[1] ** 2)
 
+<<<<<<< HEAD
         # Function to calculate the angle a point forms with the positive x-axis
         def angle_to_x_axis(point):
             return math.atan2(-point[1], point[0])
@@ -320,6 +360,8 @@ class TransparentImageOverlay:
 
         return sorted_points
 
+=======
+>>>>>>> 77979e8 (demo working)
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
         # Bisher wird das ganze Bild abgesucht
