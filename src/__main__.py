@@ -7,55 +7,57 @@ from src.cli.prompt import PromptManager
 from src.screenshot_engine import WebsiteScreenshotEngine
 
 
-def process(selectedDevices, prompt_manager: PromptManager):
+def process(selected_devices, prompt_manager: PromptManager):
 
     # create new output folder
-    webNameInfo = tldextract.extract(prompt_manager.url)
-    folderName = sanitize(webNameInfo.subdomain + webNameInfo.domain)
-    newPath = f"output/{folderName}/"
+    web_name_info = tldextract.extract(prompt_manager.url)
+    folder_name = sanitize(web_name_info.subdomain + web_name_info.domain)
+    new_path = f"output/{folder_name}/"
 
-    if not os.path.exists(newPath):
-        os.makedirs(newPath)
+    if not os.path.exists(new_path):
+        os.makedirs(new_path)
 
     # start selenium Engine
-    screenshotEngine = WebsiteScreenshotEngine(
+    screenshot_engine = WebsiteScreenshotEngine(
         url=prompt_manager.url,
-        directory=newPath + ".temp/",
+        directory=new_path + ".temp/",
         cookieClass=prompt_manager.hideClass,
         waitTime=5,
     )
+    for x in range(len(selected_devices)):
+        mockup = selected_devices[x]
 
-    for mockup in selectedDevices:
         print(
             f"\n{bcolors.UNDERLINE}Device generating:{bcolors.ENDC} {bcolors.OKCYAN}{mockup.get('name')}{bcolors.ENDC}")
 
-        screenshotSize = mockup.get("screen")
-        newScreenshot = screenshotEngine.take_screenshot(
-            screenshotSize.get("width"),
-            screenshotSize.get("height")
+        screenshot_size = mockup.get("screen")
+        new_screenshot = screenshot_engine.take_screenshot(
+            screenshot_size.get("width"),
+            screenshot_size.get("height")
         )
 
         # Create new Overlay Image
         print("Starting image processor")
 
-        mockupArr = mockup.get("mockupImage")
-        for ix, n in enumerate(mockupArr):
+        mockup_arr = mockup.get("mockupImage")
+        for ix, n in enumerate(mockup_arr):
             if not os.path.isfile(n):
+                print(f"Mockup-fle not found in specific path {n}")
                 continue
 
-            realIndx = ix + 1
+            real_indx = ix + 1
             print(
-                f"\n{bcolors.HEADER}Generating {realIndx}/{len(mockupArr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
-            photoBooth = TransparentImageOverlayer(
+                f"\n{bcolors.HEADER}Generating {real_indx}/{len(mockup_arr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
+            photo_booth = TransparentImageOverlayer(
                 bottom_image_path=n,
-                top_image_path=newScreenshot
+                top_image_path=new_screenshot
             )
 
-            fileName = sanitize(mockup.get("name")) + f"-{(ix + 1):02d}"
+            file_name = sanitize(mockup.get("name")) + f"-{(ix + 1):02d}"
 
-            photoBooth.overlay_images(newPath, fileName, keepScreenshot=(realIndx < len(mockupArr)))
+            photo_booth.overlay_images(new_path, file_name, keepScreenshot=False, debug=True)
 
-    screenshotEngine.closeBrowser()
+    screenshot_engine.closeBrowser()
 
 
 def sanitize(string):

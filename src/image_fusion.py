@@ -91,7 +91,7 @@ class TransparentImageOverlayer:
         easy_compositing = "just screenshot position on mockup"
         hard_compositing = "background mockup image, screenshot, glow and glare"
         print(f"{bcolors.BOLD}Compositing {easy_compositing if easy_mode else hard_compositing}{bcolors.ENDC}")
-        image_comp = self.applyLayer(background, easy_mode)
+        image_comp = self.apply_layer(background, easy_mode)
 
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)

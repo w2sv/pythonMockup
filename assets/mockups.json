@@ -2,9 +2,9 @@
   {
     "name" : "MacBook Air M1",
     "mockupImage": [
-      "src/mockup/macbook-air-m1-01.png",
-      "src/mockup/macbook-air-m1-02.png",
-      "src/mockup/macbook-air-m1-03.png"
+      "assets/mockup/macbook-air-m1-01.png",
+      "assets/mockup/macbook-air-m1-02.png",
+      "assets/mockup/macbook-air-m1-03.png"
     ],
     "screen" : {
       "width": 1600,
@@ -13,10 +13,10 @@
   }, {
     "name" : "Iphone 14 Pro",
     "mockupImage": [
-      "src/mockup/iphone-14-pro-01.png",
-      "src/mockup/iphone-14-pro-02.png",
-      "src/mockup/iphone-14-pro-03.png",
-      "src/mockup/iphone-14-pro-04.png"
+      "assets/mockup/iphone-14-pro-01.png",
+      "assets/mockup/iphone-14-pro-02.png",
+      "assets/mockup/iphone-14-pro-03.png",
+      "assets/mockup/iphone-14-pro-04.png"
     ],
     "screen" : {
       "width": 512,
@@ -25,8 +25,8 @@
   }, {
     "name" : "XDR-Display",
     "mockupImage": [
-      "src/mockup/xdr-display-01.png",
-      "src/mockup/xdr-display-02.png"
+      "assets/mockup/xdr-display-01.png",
+      "assets/mockup/xdr-display-02.png"
     ],
     "screen" : {
       "width": 2560,
