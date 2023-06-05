@@ -8,13 +8,14 @@ from src.cli import bcolors
 
 
 class TransparentImageOverlayer:
+
     def __init__(self, bottom_image_path, top_image_path):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
         self.transform_points = []
         self.size = (0, 0)
 
-    def overlay_images(self, folder, file, keepScreenshot=False, debug=True):
+    def overlay_images(self, folder, file, keep_screenshot=False, debug=True):
 
         def print_lines(lines_data, image, color=(255,0,0)):
             if lines_data is not None:
@@ -83,7 +84,7 @@ class TransparentImageOverlayer:
             print_dots(intersections, edged_img, (255,255,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-4-finalPoints.png", edged_img)
 
-        self.transformPoints = np.array(intersections, dtype=np.float32)
+        self.transform_points = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         easy_mode = False
         print(f"{bcolors.OKCYAN}Starting image processing ...{bcolors.ENDC}")
@@ -96,8 +97,8 @@ class TransparentImageOverlayer:
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)
 
-        if keepScreenshot is False:
-            self.removeScreenshotTemp()
+        if keep_screenshot is False:
+            self.remove_screenshot_temp()
 
     def apply_layer(self, bg, easy_mode=False):
         # Oeffne Screenshot

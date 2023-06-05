@@ -45,9 +45,9 @@ def process(selected_devices, prompt_manager: PromptManager):
                 print(f"Mockup-fle not found in specific path {n}")
                 continue
 
-            real_indx = ix + 1
+            real_index = ix + 1
             print(
-                f"\n{bcolors.HEADER}Generating {real_indx}/{len(mockup_arr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
+                f"\n{bcolors.HEADER}Generating {real_index}/{len(mockup_arr)} mockups for {mockup.get('name')}{bcolors.ENDC}")
             photo_booth = TransparentImageOverlayer(
                 bottom_image_path=n,
                 top_image_path=new_screenshot
@@ -55,7 +55,8 @@ def process(selected_devices, prompt_manager: PromptManager):
 
             file_name = sanitize(mockup.get("name")) + f"-{(ix + 1):02d}"
 
-            photo_booth.overlay_images(new_path, file_name, keepScreenshot=False, debug=True)
+            last_device = real_index < len(mockup_arr)
+            photo_booth.overlay_images(new_path, file_name, keep_screenshot=last_device, debug=True)
 
     screenshot_engine.closeBrowser()
 
