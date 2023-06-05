@@ -1,50 +1,57 @@
 import os
 import cv2
 
-from src.cli.bcolors import bcolors
-from src.test_gen import TestSquareGenerator
+from src.cli import bcolors
+from test.generator import TestSquareGenerator
 from src.image_fusion import TransparentImageOverlayer
 
 # set image creation runs
 count = 100
 
-# Create test folder
-myPath = f"output/_test/run-X{count}-V"
+blue_c = (255, 0, 0)
+red_c = (0, 0, 255)
 
-prefixNbr = 1
-folder = myPath+f"{prefixNbr}/"
 
-while True:
-    if not os.path.isdir(folder):
-        print("folder doesn't exist", folder)
-        os.makedirs(folder)
-        break
+def create_test_folder():
+    # Create test folder
+    test_path = f"output/_test/run-X{count}-V"
 
-    # check if folder maybe empty
-    if len(os.listdir(folder)) == 0:
-        print("folder is empty -> use it", folder)
-        break
+    prefix_nbr = 1
+    folder = test_path + f"{prefix_nbr}/"
 
-    prefixNbr = prefixNbr + 1
-    folder = myPath+f"{prefixNbr}/"
+    while True:
+        if not os.path.isdir(folder):
+            print("folder doesn't exist", folder)
+            os.makedirs(folder)
+            break
 
-print("created folder", folder)
+        # check if folder maybe empty
+        if len(os.listdir(folder)) == 0:
+            print("folder is empty -> use it", folder)
+            break
 
-# generate random transformed rectangles for test purposes
-print(f"Generating {count} images...")
-testEngine = TestSquareGenerator(count, folder)
-images = testEngine.test_run()
-print(f"{bcolors.OKGREEN}...successful{bcolors.ENDC}")
+        prefix_nbr = prefix_nbr + 1
+        folder = test_path + f"{prefix_nbr}/"
 
-# initialize testing class
-imageAnalyzer = TransparentImageOverlay("", "")
+    print("created folder", folder)
+    return folder
 
-blue_c = (255,0,0)
-red_c = (0,0,255)
 
-# Create Demo Image Test method with image Analyzer
-def hughPointLinecheck(contour, background):
+def generate_demo_images(dir):
+    # generate random transformed rectangles for test purposes
+    print(f"Generating {count} images...")
+    test_engine = TestSquareGenerator(count, dir)
+    image_list = test_engine.test_run()
+    print(f"{bcolors.OKGREEN}...successful{bcolors.ENDC}")
+
+    return image_list
+    
+
+def hugh_point_check(contour, background):
     cv2.imwrite(folder + f"{x}-1-canny.png", contour)
+
+    # initialize testing class
+    imageAnalyzer = TransparentImageOverlayer("", "")
 
     lines = imageAnalyzer.get_hough_lines(contour)
     mapped_lines_x, mapped_lines_y = imageAnalyzer.combine_overlapping_lines(lines)
@@ -130,15 +137,22 @@ def hughPointLinecheck(contour, background):
     return True
 
 
-successCount = 0
-for (x,data) in enumerate(images):
-    # try to find solution
-    print(f"\nAnalyze image {x + 1}/{count}")
+if __name__ == '__main__':
+    # Create Folder
+    work_dir = create_test_folder()
 
-    canny = data.get("canny")
-    bg = data.get("original")
+    # generate Demo Images
+    images = generate_demo_images(work_dir)
+    
+    success_count = 0
+    for (x,data) in enumerate(images):
+        # try to find solution
+        print(f"\nAnalyze image {x + 1}/{count}")
 
-    if hughPointLinecheck(canny, bg):
-        successCount += 1
+        canny = data.get("canny")
+        bg = data.get("original")
 
-print(f"\n\nAnalysed with Rate of {successCount} / {count}")
+        if hugh_point_check(canny, bg):
+            success_count += 1
+
+    print(f"\n\nAnalysed with Rate of {success_count} / {count}")

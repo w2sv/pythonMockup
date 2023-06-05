@@ -34,7 +34,8 @@ So far screen recognition only works reliably with green-screen mockups. Look in
 
 **Running**
 --
-    python -m src
+    python -m src       # for Mockup generation
+    python -m test      # for test-run
 
 
 **Features implemented**

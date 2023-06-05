@@ -1,5 +1,4 @@
 import os
-
 import tldextract
 
 from src.cli import bcolors
