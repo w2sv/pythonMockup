@@ -14,7 +14,9 @@
     "name" : "Iphone 14 Pro",
     "mockupImage": [
       "src/mockup/iphone-14-pro-01.png",
-      "src/mockup/iphone-14-pro-02.png"
+      "src/mockup/iphone-14-pro-02.png",
+      "src/mockup/iphone-14-pro-03.png",
+      "src/mockup/iphone-14-pro-04.png"
     ],
     "screen" : {
       "width": 512,

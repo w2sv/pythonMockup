@@ -32,7 +32,7 @@ class WebsiteScreenshot:
         opt.headless = True
 
         driver = Firefox(options=opt)
-        driver.set_page_load_timeout(10)
+        driver.set_page_load_timeout(100)
 
         # Navigate to the specified URL and wait for the page to load
         print(f"...opening {bcolors.OKBLUE}{self.url}{bcolors.ENDC} in Firefox")

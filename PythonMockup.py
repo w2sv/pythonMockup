@@ -62,7 +62,6 @@ class PythonMockup:
 
                 photoBooth.overlay_images(newPath, fileName, keepScreenshot= (realIndx < len(mockupArr)))
 
-
         screenshotEngine.closeBrowser()
 
     def sanitize(self, string):

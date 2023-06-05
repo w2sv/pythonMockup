@@ -9,36 +9,95 @@ class TransparentImageOverlay:
     def __init__(self, bottom_image_path, top_image_path):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
-
         self.transformPoints = []
-        self.crossToleranz = 150
-        self.perimterToleranz = 0.05
+        self.size = (0, 0)
 
+    def overlay_images(self, folder, file, keepScreenshot=False, debug=True):
 
-    def overlay_images(self, folder, file, keepScreenshot=False):
+        def print_lines(lines_data, image, color=(255,0,0)):
+            if lines_data is not None:
+                for lin in lines_data:
+                    x1, y1, x2, y2 = lin[0]
+                    cv2.line(image, (x1, y1), (x2, y2), color, 3)
+                    cv2.circle(image, (x1, y1), 15, color, 3)
+                    cv2.circle(image, (x2, y2), 15, color, 3)
 
-        # Öffne die beiden Bilder und konvertiere sie in BGRA-Modus, um Transparenz zu unterstützen
+        def print_dots(dot_data, image, color=(255,0,0)):
+            if dot_data is not None:
+                for dot in dot_data:
+                    x, y, = dot
+                    cv2.circle(image, (x, y), 15, color, 3)
+
+        # Oeffne das Bild (rbga)
         background = cv2.imread(self.bottom_image_path, cv2.IMREAD_UNCHANGED)
 
+        h, w = background.shape[:2]
+        self.size = (w, h)
+
         # Calculate 4-Point transformation
-        self.transformPoints = np.array(self.getScreenPoints(background, folder, file), dtype='float32')
+        contour_image = self.get_contour(background)
+        if debug:
+            cv2.imwrite(folder+".temp/"+file+"-1-contour.png", contour_image)
 
-        for x in self.transformPoints:
-            print(x)
+        # get Hugh Lines
+        all_lines = self.get_hough_lines(contour_image)
+        print(f"{bcolors.OKBLUE}Hough-transform detected {len(all_lines)} lines in contour{bcolors.ENDC}")
+        mapped_x, mapped_y = self.combine_overlapping_lines(all_lines)
 
+        # debug Image
+        if debug:
+            all_lines_img = background.copy()
+            print_lines(mapped_x, all_lines_img, (255,0,0, 255))
+            print_lines(mapped_y, all_lines_img, (255,0,255, 255))
+            cv2.imwrite(folder+".temp/"+file+"-2-houghLines.png", all_lines_img)
+
+        sorted_y_intersect, vert_line = self.get_relevant_lines(mapped_x, True)
+        sorted_x_intersect, hori_line = self.get_relevant_lines(mapped_y, False)
+        if len(sorted_y_intersect) < 2 or len(sorted_x_intersect) < 2:
+            print(f"{bcolors.FAIL}Could not find two lines per orientation{bcolors.ENDC}")
+            return False
+
+        y_points, y_lines = zip(*sorted_y_intersect)
+        x_points, x_lines = zip(*sorted_x_intersect)
+        four_borders = (y_lines[0], x_lines[-1], y_lines[-1], x_lines[0])
+
+        if debug:
+            all_intersection_img = background.copy()
+            print_dots(x_points, all_intersection_img, (255,0,0, 255))
+            print_lines([(hori_line,)], all_intersection_img, (255,0,0, 255))
+            print_dots(y_points, all_intersection_img, (255,0,255, 255))
+            print_lines([(vert_line,)], all_intersection_img,  (255,0,255, 255))
+            cv2.imwrite(folder+".temp/"+file+"-3-lineCalculation.png", all_intersection_img)
+
+        intersections = self.get_screen_position(four_borders)
+        if intersections is None:
+            print(f"{bcolors.FAIL}Could not find screen corners from data{bcolors.ENDC}")
+            return False
+
+        print(f"{bcolors.OKGREEN}four screen-corner coordinates calculated{bcolors.ENDC}")
+
+        if debug:
+            edged_img = background.copy()
+            print_dots(intersections, edged_img, (255,255,255, 255))
+            cv2.imwrite(folder+".temp/"+file+"-4-finalPoints.png", edged_img)
+
+        self.transformPoints = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
-        imageComp = self.applyLayer(background)
+        easy_mode = False
+        print(f"{bcolors.OKCYAN}Starting image processing ...{bcolors.ENDC}")
+
+        easy_compositing = "just screenshot position on mockup"
+        hard_compositing = "background mockup image, screenshot, glow and glare"
+        print(f"{bcolors.BOLD}Compositing {easy_compositing if easy_mode else hard_compositing}{bcolors.ENDC}")
+        image_comp = self.applyLayer(background, easy_mode)
 
         # Save the new image
-        cv2.imwrite(folder+file+".png", imageComp)
+        cv2.imwrite(folder+file+".png", image_comp)
 
         if keepScreenshot is False:
             self.removeScreenshotTemp()
 
     def applyLayer(self, bg, easy_mode=False):
-        h, w = bg.shape[:2]
-        bg_size = (w, h)
-
         # Oeffne Screenshot
         if not os.path.isfile(self.top_image_path):
             raise Exception(f"{bcolors.FAIL}Could not find screenshot file on drive.{bcolors.ENDC}")
@@ -48,22 +107,21 @@ class TransparentImageOverlay:
         alpha_screen, screen_glare = self.process_green_pixels(bg)
 
         # Transform and Mask Screenshot
-        transformed_screen = self.add_four_point_transform(screenshot, bg_size, alpha_screen)
+        transformed_screen = self.add_four_point_transform(screenshot, alpha_screen)
 
         if not easy_mode:
-            screen_glow = self.create_border_glow(transformed_screen, bg_size)
-
+            screen_glow = self.create_border_glow(transformed_screen)
             print(f"...blending layer1: {bcolors.OKBLUE}background{bcolors.ENDC} and {bcolors.OKBLUE}screen-glow{bcolors.ENDC}")
             layer1 = self.overlay(screen_glow, bg)
             print(f"...blending layer2: {bcolors.OKBLUE}layer1{bcolors.ENDC} and {bcolors.OKBLUE}screenshot{bcolors.ENDC}")
             layer2 = self.overlay(transformed_screen, layer1)
             print(f"...blending final composition: {bcolors.OKBLUE}layer2{bcolors.ENDC} and {bcolors.OKBLUE}screen-glare{bcolors.ENDC}")
             return self.overlay(screen_glare, layer2)
+
         print(f"...blending layer")
         return self.overlay(transformed_screen, bg)
 
-
-    def getScreenPoints(self, img, dir, file):
+    def get_contour(self, img):
         print(f"{bcolors.OKCYAN}calculation screen position on mockup:{bcolors.ENDC}")
         # Convert the image to HSV color space
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
@@ -82,211 +140,185 @@ class TransparentImageOverlay:
         # Convert the masked image to grayscale, blur it, and find edges
         gray = cv2.cvtColor(green_image, cv2.COLOR_BGR2GRAY)
         gray = cv2.GaussianBlur(gray, (5, 5), 0)
-        edged = cv2.Canny(gray, 75, 200)
-        #cv2.imwrite(dir+".temp/"+file+"-contour.png", edged)
+        edged = cv2.Canny(gray, 50, 150, apertureSize=3)
+        # make edge contour little bit bigger
+        kernel = np.ones((3, 3), np.uint8)
+        dilated = cv2.dilate(edged, kernel)
 
-        print("...approximate contours")
-        # aproximate Points from contour lines
-        contours, hierarchy = cv2.findContours(edged.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        lines = np.array(self.contour_to_lines(contours))
+        return dilated
 
-        if len(lines) < 1:
-            raise Exception(f"{bcolors.FAIL}Could not find any contours{bcolors.ENDC}")
 
-        demoImage = img.copy()
-        for line in lines:
-            point, p2 = line
-            cv2.circle(demoImage, point, 5, (255, 0, 0, 255), -1)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
+    def get_hough_lines(self, contour):
+        h, w = contour.shape[:2]
+        self.size = (w, h)
+        # Hugh-Transformation Hugh-Lines in Point (X, Y) form
 
-        # calculate only collinear lines from all lines
-        print("...generate collinear lines from contours")
-        collinear_lines = self.find_collinear_lines(lines)
+        h, w = contour.shape[:2]
+        min_line_length = min([w, h]) // 10
 
-        for line in collinear_lines:
-            p1, p2 = line
-            cv2.line(demoImage, p1, p2, (0, 0, 150, 255), 5)
-        cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
-
-        if len(collinear_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find screen border from collinear lines{bcolors.ENDC}")
-
-        # get four biggest lines from array
-        print("...calculate line interception")
-
-        border_lines = self.get_biggest(collinear_lines)
-
-        if len(border_lines) > 1:
-            for lineF in border_lines:
-                p1, p2 = lineF
-                cv2.circle(demoImage, p1, 20, (255, 255, 255, 255), 3)
-                cv2.circle(demoImage, p2, 20, (255, 255, 255, 255), 3)
-                cv2.line(demoImage, p1, p2, (0, 0, 255, 255), 3)
-
-            cv2.imwrite(dir + ".temp/" + file + "-border.png", demoImage)
-
-        if len(border_lines) < 4:
-            raise Exception(f"{bcolors.FAIL}Could not find any screen{bcolors.ENDC}")
-
-        # calculate intersection points from four lines
-        screen_coordinates = self.get_line_intersection(border_lines)
-
-        if len(screen_coordinates) > 1:
-            for pt in screen_coordinates:
-                cv2.circle(demoImage, pt, 10, (0, 0, 255, 255), 8)
-            cv2.imwrite(dir+".temp/"+file+"-border.png", demoImage)
-
-        if len(screen_coordinates) != 4:
-            raise Exception(f"{bcolors.FAIL}Could not calculate 4-Point transformation from data{bcolors.ENDC}")
-
-        # draw Demo Image
-        return screen_coordinates
-
-    def contour_to_lines(self, contours):
-        # Iterate over the contours and find the rectangle with rounded corners
-        lines = []
-
-        for cnt in contours:
-            # Approximate the contour with a polygon
-            perimeter = cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, self.perimterToleranz * perimeter, True)
-#
-            # Check if the polygon has four sides
-            if len(approx) == 4:
-                print(f"{bcolors.OKGREEN}Screen-contour found on mockup{bcolors.ENDC}")
-
-                # Reduce Point count for better results
-                for ix, val in enumerate(cnt):
-                    if ix >= len(cnt) - 1:
-                        break
-
-                    current_point = cnt[ix][0]
-                    next_point = cnt[ix+1][0]
-
-                    lines.append((current_point, next_point))
-                break
-
+        lines = cv2.HoughLinesP(
+            image=contour,
+            rho=1,
+            theta=np.pi / 720,
+            threshold=50,
+            minLineLength=min_line_length,
+            maxLineGap=None
+        )
 
         return lines
 
-    def line_to_vector(self, l1, normalize=False):
-        vector = (
-            l1[1][0] - l1[0][0],
-            l1[1][1] - l1[0][1]
-        )
+    def combine_overlapping_lines(self, lines):
+        def get_line_degree(degree_line):
+            x1, y1, x2, y2 = degree_line[0]
+            slope_rad = math.atan2((y2 - y1), (x2 - x1))
+            # Convert slope to degrees
+            slope_deg = math.degrees(slope_rad)
+            # If slope is negative, add 180 to it to make it positive
+            if slope_deg < 0:
+                slope_deg += 180
 
-        if normalize:
-            magnitude = math.sqrt(sum(component**2 for component in vector))
-            return tuple(component/magnitude for component in vector)
+            # If slope is more than 90 degrees, subtract from 180 to make it less than or equal to 90
+            if slope_deg > 90:
+                slope_deg = 180 - slope_deg
 
-        return vector
+            return int(slope_deg)
 
-    def find_collinear_lines(self, lineArr):
+        # Sort lines by degree
+        sorted_degree_lines = sorted(lines, key=lambda l: get_line_degree(l))
 
-        def cross_product(v1, v2):
-            crossProduct = (v1[0] * v2[1]) - (v1[1] * v2[0])
-            return abs(crossProduct)
+        # check which one is horizontal / vertical
+        x1,y1,x2,y2 = sorted_degree_lines[0][0]
+        first_line_horizontal = abs(x2-x1) > abs(y2-y1)
 
-        edges = []
+        # Assosiate degree change with lines
+        last_degree = None
+        change_degree_assoc = []
+        for idx, vec in enumerate(sorted_degree_lines):
+            # set last line if undefined -> for next loop
+            curr_line_degree = get_line_degree(vec)
+            if last_degree is None:
+                last_degree = curr_line_degree
+                continue
 
-        line_builder = ()
-        last_crossProduct = 0
+            # calculate difference to prev degree
+            change = abs(curr_line_degree - last_degree)
+            change_degree_assoc.append(change)
+            # print(f"{curr_line_degree}°", change)
+            last_degree = curr_line_degree
 
-        for ix, line in enumerate(lineArr):
-            if ix >= len(lineArr) - 1:
-                break
+        # get Index, where to split between horizontal, vertical
+        max_value = max(change_degree_assoc, key=lambda x: x)
+        indices = [index for index, item in enumerate(change_degree_assoc) if item == max_value]
+        #print(f"Split Vertical to Horizontal at index {indices} after delta degree {max_value}")
 
-            current_line = line
-            next_line = lineArr[ix+1]
+        split_index = indices[0] +1
+        group_one = sorted_degree_lines[:split_index] if first_line_horizontal else sorted_degree_lines[split_index:]
+        group_two = sorted_degree_lines[split_index:] if first_line_horizontal else sorted_degree_lines[:split_index]
 
-            emptyLine = len(line_builder) < 1
+        print(f"{bcolors.OKGREEN}seperated {len(group_one)}-horizontal and {len(group_two)}-vertical{bcolors.ENDC} lines")
 
-            # Make Vektors from Line Segments
-            if emptyLine:
-                v1, v2 = self.line_to_vector(current_line), self.line_to_vector(next_line)
+        return group_one, group_two
+
+    def get_relevant_lines(self, line_group, is_horizontal):
+        w, h = self.size
+        line_skew = 5
+        line_offset = 50
+        vertical_line = ((w//2) - line_skew, line_offset, (w//2) + line_skew, h-line_offset)
+        horizontal_line = (line_offset, (h//2) - line_skew, w-line_offset, (h//2) + line_skew)
+        reference_line = vertical_line if is_horizontal else horizontal_line
+
+        intersection_array = []
+        for line in line_group:
+            # calculate X/Y-Value for Intersection with reference line
+            line_intersections = self.line_intersection(reference_line, line[0])
+            if line_intersections is None:
+                print(f"{bcolors.FAIL}No Intersection between refline and line?{bcolors.ENDC}")
+                print(f"Vertical Line and L: {line[0]}")
+                continue
             else:
-                v1, v2 = self.line_to_vector(line_builder), self.line_to_vector(next_line)
+                # Add intersection Value (x or y) with line to list
+                entry = (line_intersections, line)
+                #print(f"{bcolors.OKGREEN}Found Intersection between Refline and line:{bcolors.ENDC}")
+                #print(f"Horizontal Line and L: {line[0]}")
+                intersection_array.append(entry)
 
-            crossProduct = cross_product(v1, v2)
-            crossDifference = abs(crossProduct - last_crossProduct)
-            last_crossProduct = crossProduct
+        # sort Array for X / Y Value of intersection point
+        sorted_data = sorted(intersection_array, key=lambda tup: tup[0][0 if is_horizontal else 1])
 
-            if crossDifference < self.crossToleranz:
-                # cross Product is small
-                if emptyLine:
-                    # start new Line segment
-                    line_builder = (current_line[0], next_line[1])
-                else:
-                    # add line end to segment
-                    line_builder = (line_builder[0], next_line[1])
+        return sorted_data, reference_line
+
+    def line_intersection(self, line1, line2):
+        scaling_factor = max(*self.size)
+        line1 = [coord / scaling_factor for coord in line1]
+        line2 = [coord / scaling_factor for coord in line2]
+
+        x1, y1, x2, y2 = line1
+        x3, y3, x4, y4 = line2
+
+        try:
+            denom = ((x1 - x2) * (y3 - y4)) - ((y1 - y2) * (x3 - x4))
+            if abs(denom) < 1e-10:  # Consider lines parallel if denom is very small
+                return None  # Lines are parallel
+
+            xy_factor = (x3 * y4) - (y3 * x4)
+            xy_subtract = (x1 * y2) - (y1 * x2)
+            x_num = (xy_subtract * (x3 - x4)) - ((x1 - x2) * xy_factor)
+            y_num = (xy_subtract * (y3 - y4)) - ((y1 - y2) * xy_factor)
+
+            x = (x_num / denom) * scaling_factor
+            y = (y_num / denom) * scaling_factor
+
+            if -1 < x < self.size[0] and -1 < y < self.size[1]:
+                return int(x), int(y)
             else:
-                # cross Product is > 0
-                if not emptyLine:
-                    # previous line was collinear, but this one isn't anymore
-                    edges.append(line_builder)
-                    line_builder = ()
-
-        return edges
-
-    def get_line_intersection(self, lines):
-        def line_equation(line):
-            (x1, y1), (x2, y2) = line
-            m = (y2 - y1) / (x2 - x1) if x1 != x2 else float('inf')
-            b = y1 - m * x1
-            return m, b
-
-        def intersection(line1, line2):
-            m1, b1 = line_equation(line1)
-            m2, b2 = line_equation(line2)
-            if m1 == m2:  # Parallel lines, no intersection
                 return None
-            if m1 == float('inf'):  # Line1 is vertical
-                x = line1[0][0]
-                y = m2 * x + b2
-            elif m2 == float('inf'):  # Line2 is vertical
-                x = line2[0][0]
-                y = m1 * x + b1
-            else:
-                x = (b2 - b1) / (m1 - m2)
-                y = m1 * x + b1
 
-            # Only return the point if it's within the desired range
-            if 0 <= x <= 5000 and 0 <= y <= 5000:
-                return x, y
+        except Exception as e:
+            print(f"{bcolors.FAIL}Overflow in Intersection calculation: {e}{bcolors.ENDC}")
+            return None
+
+    def get_screen_position(self, line_group):
+        intersection_points = []
+        num_lines = len(line_group)
+        # Iterate through all combinations of lines
+        for i in range(num_lines):
+            curr_line = line_group[i][0]
+            next_line = line_group[(i + 1) % num_lines][0]
+
+            # print(f"check {curr_line} with {next_line}")
+            intersect = self.line_intersection(curr_line, next_line)
+
+            if intersect is not None:
+                intersection_points.append(intersect)
             else:
                 return None
-        def angle(point):
-            x, y = point
-            return math.atan2(y, x)
 
+        if len(intersection_points) == 4:
+            # sort points in right order
+            sorted_intersects = self.sort_points_clockwise(intersection_points)
+            return sorted_intersects
+        else:
+            return None
+    def sort_points_clockwise(self, points):
+        # Function to calculate the Euclidean distance from a point to the origin
         def distance_to_origin(point):
-            x, y = point
-            return math.sqrt(x ** 2 + y ** 2)
+            return math.sqrt(point[0] ** 2 + point[1] ** 2)
 
-        intersections = []
-        for i in range(4):
-            for j in range(i + 1, 4):
-                point = intersection(lines[i], lines[j])
-                if point is not None:
-                    intersections.append(point)
+        # Function to calculate the angle a point forms with the positive x-axis
+        def angle_to_x_axis(point):
+            return math.atan2(-point[1], point[0])
 
-        intersections = sorted(intersections, key=distance_to_origin)[:4]
-        origin_min_distance_point = min(intersections, key=distance_to_origin)
-        intersections = sorted(intersections, key=angle)
-        intersections.remove(origin_min_distance_point)
-        intersections = [origin_min_distance_point] + intersections
+        # Find the point closest to the origin
+        start_point = min(points, key=distance_to_origin)
 
-        return [(int(x), int(y)) for x, y in intersections]
+        # Sort the points in clockwise order, starting with the start_point
+        sorted_points = sorted(points, key=angle_to_x_axis, reverse=True)
 
-    def get_biggest(self, lineArray):
-        def length(line):
-            (x1, y1), (x2, y2) = line
-            return math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2)
+        # Make sure the start_point is first in the sorted list
+        sorted_points.remove(start_point)
+        sorted_points.insert(0, start_point)
 
-        lineArray.sort(key=length, reverse=True)
-        bigger = lineArray[:4]
-        return bigger
-
+        return sorted_points
 
     def process_green_pixels(self, input_image):
         # TODO: Nur innerhalb der Screen-Punkte suchen
@@ -318,14 +350,14 @@ class TransparentImageOverlay:
 
         return alpha_mask, overlay_layer
 
-    def create_border_glow(self, screen, size):
+    def create_border_glow(self, screen):
         print(f"{bcolors.OKCYAN}calculating screen glow{bcolors.ENDC}")
         # Erstelle ein neues transparentes leeres Bild auf Größe des Hintergrunds
-        empty_image = np.zeros((size[1], size[0], 4), dtype=np.uint8)
+        empty_image = np.zeros((self.size[1], self.size[0], 4), dtype=np.uint8)
         image = self.overlay(screen, empty_image)
 
         # blur new generated image violently
-        print("...blurr image")
+        print("...blur image")
         blurred = cv2.blur(image, (100, 100))
         def bezier_curve(t, sludge):
             p1 = [0,sludge]
@@ -339,14 +371,14 @@ class TransparentImageOverlay:
             return pixel
 
         # Apply the alpha adjustment
-        print("...adjust blurr opacity based on brightness")
+        print("...adjust blur opacity based on brightness")
         for i in range(blurred.shape[0]):
             for j in range(blurred.shape[1]):
                 blurred[i, j] = adjust_alpha(blurred[i, j])
 
         return blurred
 
-    def add_four_point_transform(self, screenshot, size, mask):
+    def add_four_point_transform(self, screenshot, mask):
         print(f"{bcolors.OKCYAN}transforming screenshot{bcolors.ENDC}")
         # Calculate the 4-point transformation
         pts_src = np.array(
@@ -354,7 +386,7 @@ class TransparentImageOverlay:
             dtype=np.float32)
 
         h, status = cv2.findHomography(pts_src, self.transformPoints)
-        out = cv2.warpPerspective(screenshot, h, size)
+        out = cv2.warpPerspective(screenshot, h, self.size)
 
         # Apply a Mask to the wraped image
         if len(mask) > 0:
