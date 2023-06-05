@@ -1,11 +1,9 @@
 import os
-
 import cv2
 
-from libs.bColor import bcolors
-from libs.testGen import generateTestSquare
-from libs.imageFusion import TransparentImageOverlay
-
+from src.cli.bcolors import bcolors
+from src.test_gen import TestSquareGenerator
+from src.image_fusion import TransparentImageOverlayer
 
 # set image creation runs
 count = 100
@@ -34,7 +32,7 @@ print("created folder", folder)
 
 # generate random transformed rectangles for test purposes
 print(f"Generating {count} images...")
-testEngine = generateTestSquare(count, folder)
+testEngine = TestSquareGenerator(count, folder)
 images = testEngine.test_run()
 print(f"{bcolors.OKGREEN}...successful{bcolors.ENDC}")
 
@@ -127,8 +125,6 @@ def hughPointLinecheck(contour, background):
     else:
         print(f"{bcolors.FAIL}Could not find any intersections{bcolors.ENDC}")
         return False
-
-
 
     print("PointCheck: Saved report image")
     return True

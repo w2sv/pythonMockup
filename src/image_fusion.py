@@ -1,18 +1,20 @@
+import math
+import os
+
 import cv2
 import numpy as np
-import os
-import math
-from libs.bColor import bcolors
+
+from src.cli import bcolors
 
 
-class TransparentImageOverlay:
+class TransparentImageOverlayer:
     def __init__(self, bottom_image_path, top_image_path):
         self.bottom_image_path = bottom_image_path
         self.top_image_path = top_image_path
-        self.transformPoints = []
+        self.transform_points = []
         self.size = (0, 0)
 
-    def overlay_images(self, folder, file, keepScreenshot=False, debug=True):
+    def overlay_images(self, folder, file, keep_screenshot=False, debug=True):
 
         def print_lines(lines_data, image, color=(255,0,0)):
             if lines_data is not None:
@@ -37,7 +39,7 @@ class TransparentImageOverlay:
         # Calculate 4-Point transformation
         contour_image = self.get_contour(background)
         if debug:
-            cv2.imwrite(folder+".temp/"+file+"-1-contour.png", contour_image)
+            cv2.imwrite(folder + ".temp/" + file + "-1-contour.png", contour_image)
 
         # get Hugh Lines
         all_lines = self.get_hough_lines(contour_image)
@@ -81,7 +83,7 @@ class TransparentImageOverlay:
             print_dots(intersections, edged_img, (255,255,255, 255))
             cv2.imwrite(folder+".temp/"+file+"-4-finalPoints.png", edged_img)
 
-        self.transformPoints = np.array(intersections, dtype=np.float32)
+        self.transform_points = np.array(intersections, dtype=np.float32)
         # Set Background, Glow, (Screen + Mask) and Screen-Glare  into one composition
         easy_mode = False
         print(f"{bcolors.OKCYAN}Starting image processing ...{bcolors.ENDC}")
@@ -89,15 +91,15 @@ class TransparentImageOverlay:
         easy_compositing = "just screenshot position on mockup"
         hard_compositing = "background mockup image, screenshot, glow and glare"
         print(f"{bcolors.BOLD}Compositing {easy_compositing if easy_mode else hard_compositing}{bcolors.ENDC}")
-        image_comp = self.applyLayer(background, easy_mode)
+        image_comp = self.apply_layer(background, easy_mode)
 
         # Save the new image
         cv2.imwrite(folder+file+".png", image_comp)
 
-        if keepScreenshot is False:
-            self.removeScreenshotTemp()
+        if keep_screenshot is False:
+            self.remove_screenshot_temp()
 
-    def applyLayer(self, bg, easy_mode=False):
+    def apply_layer(self, bg, easy_mode=False):
         # Oeffne Screenshot
         if not os.path.isfile(self.top_image_path):
             raise Exception(f"{bcolors.FAIL}Could not find screenshot file on drive.{bcolors.ENDC}")
@@ -299,6 +301,7 @@ class TransparentImageOverlay:
             return sorted_intersects
         else:
             return None
+
     def sort_points_clockwise(self, points):
         # Function to calculate the Euclidean distance from a point to the origin
         def distance_to_origin(point):
@@ -337,7 +340,7 @@ class TransparentImageOverlay:
                 b, g, r, a = input_image[y, x]
 
                 # Check if the pixel has a high green value and low red and blue values
-                if g > 150 and r < 150 and b < 150:
+                if g > 150 > r and b < 150:
                     # Create a masking pixel on the alpha mask
                     alpha_mask[y, x] = 255
 
@@ -359,10 +362,12 @@ class TransparentImageOverlay:
         # blur new generated image violently
         print("...blur image")
         blurred = cv2.blur(image, (100, 100))
+
         def bezier_curve(t, sludge):
-            p1 = [0,sludge]
+            p1 = [0, sludge]
             p2 = [1 - sludge, 1]
-            return ((1 - t) ** 3 * p1[0]) + (3 * (1 - t) ** 2 * t * p1[1]) + (3 * (1 - t) * t ** 2 * p2[0]) + (t ** 3 * p2[1])
+            return ((1 - t) ** 3 * p1[0]) + (3 * (1 - t) ** 2 * t * p1[1]) + (3 * (1 - t) * t ** 2 * p2[0]) + (
+                    t ** 3 * p2[1])
 
         def adjust_alpha(pixel):
             color_value = np.mean(pixel[:3]) / 255
@@ -385,7 +390,7 @@ class TransparentImageOverlay:
             [[0, 0], [screenshot.shape[1], 0], [screenshot.shape[1], screenshot.shape[0]], [0, screenshot.shape[0]]],
             dtype=np.float32)
 
-        h, status = cv2.findHomography(pts_src, self.transformPoints)
+        h, status = cv2.findHomography(pts_src, self.transform_points)
         out = cv2.warpPerspective(screenshot, h, self.size)
 
         # Apply a Mask to the wraped image
@@ -414,5 +419,5 @@ class TransparentImageOverlay:
 
         return image2
 
-    def removeScreenshotTemp(self):
+    def remove_screenshot_temp(self):
         os.remove(self.top_image_path)

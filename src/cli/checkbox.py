@@ -1,11 +1,12 @@
-from pynput import keyboard
-from os import system
-from libs.bColor import bcolors
 import threading
+from os import system
+
+from pynput import keyboard
+
+from src.cli import bcolors
 
 
-class checkBox:
-
+class Checkbox:
     NOT_SELECTED = "[ ]"
     IS_SELECTED = "[X]"
 
@@ -17,7 +18,7 @@ class checkBox:
                  min_select=0,
                  pre_selection=None,
                  callback=None
-    ):
+                 ):
 
         self.callback = callback
         self.finished_event = threading.Event()
@@ -87,9 +88,9 @@ class checkBox:
 
     def nav(self, dir):
         if dir:
-            self.pointer = self.pointer+1 if (self.pointer < len(self.options)-1) else 0
+            self.pointer = self.pointer + 1 if (self.pointer < len(self.options) - 1) else 0
         else:
-            self.pointer = self.pointer-1 if (self.pointer > 0) else len(self.options)-1
+            self.pointer = self.pointer - 1 if (self.pointer > 0) else len(self.options) - 1
 
         self.print_class()
 
@@ -100,11 +101,3 @@ class checkBox:
             self.selected.append(self.pointer)
 
         self.print_class()
-
-
-
-
-
-
-
-

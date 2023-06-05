@@ -1,9 +1,9 @@
 import random
-
 import cv2
 import numpy as np
 
-class generateTestSquare:
+
+class TestSquareGenerator:
 
     def __init__(self, count, path="output/test/"):
         self.outputPath = path

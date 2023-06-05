@@ -1,8 +1,8 @@
-# PythonMockup v0.92
+# PythonMockup v0.98
 
 ## Notice
 Still under development. Feel free to use or contribute!
-So far screen recognition only works reliable with provided mockups in `./src/mockups.json`
+So far screen recognition only works reliably with green-screen mockups. Look into the `assets/mockups/`-Folder for reference. Don't forget to add the mockups into the  `./assets/mockups.json` to take them into account.
 
 ### Python lib for generating device mockups from live web urls
 
@@ -17,11 +17,7 @@ So far screen recognition only works reliable with provided mockups in `./src/mo
 - Exclude HTML elements from website by class-name
 - Adapts max screenshot-resolution depending on user screen resolution
 - Multiple mockups per device in one go
-- It's possible to include own mockups in `./src/mockup/`-Folder and add them in `./src/mockups.json`. This feature might be still a little bit buggy
-
-To start the cli-programm, just run the **PythonMockup.py** from the main directory in a python env.
-
-    python3 PythonMockup.py
+- It's possible to include own mockups in `./assets/mockup/`-Folder and add them in `./assets/mockups.json`. This feature might be still a little bit buggy
 
 
 **Requirements**
@@ -30,12 +26,15 @@ To start the cli-programm, just run the **PythonMockup.py** from the main direct
 - Firefox installed
 - Pip requirements fulfilled
 
-**Pip requirements**
+**Installing**
 --
-- selenium `pip install -U selenium`
-- geckodriver-autoinstaller `pip install geckodriver-autoinstaller`
-- Open CV2 `pip install opencv-python`
-- numpy `pip install numpy`
+
+    pip install -r requirements.txt
+
+
+**Running**
+--
+    python -m src
 
 
 **Features implemented**
