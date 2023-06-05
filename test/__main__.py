@@ -47,7 +47,7 @@ def generate_demo_images(dir):
     return image_list
     
 
-def hugh_point_check(contour, background):
+def hugh_point_check(folder, contour, background):
     cv2.imwrite(folder + f"{x}-1-canny.png", contour)
 
     # initialize testing class
@@ -152,7 +152,7 @@ if __name__ == '__main__':
         canny = data.get("canny")
         bg = data.get("original")
 
-        if hugh_point_check(canny, bg):
+        if hugh_point_check(work_dir, canny, bg):
             success_count += 1
 
     print(f"\n\nAnalysed with Rate of {success_count} / {count}")
